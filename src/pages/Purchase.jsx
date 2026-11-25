@@ -12,7 +12,13 @@ export default function Purchase() {
   const addLine = () => setLines(l => [...l, { key: Math.random(), product_id: prods.data[0]?.id || '', unit_code: 'bao', qty: '', price: '' }]);
   const upd = (k, patch) => setLines(l => l.map(x => x.key === k ? { ...x, ...patch } : x));
   const calc = lines.map(l => { const p = prods.data?.find(x => x.id === l.product_id); const u = p?.units.find(x => x.unit_code === l.unit_code);
-    const qty = Number(String(l.qty).replace(',', '.')) || 0; return { ...l, p, u, qtyN: qty, total: Math.round(qty * (Number(l.price) || 0)), base: qty * (u?.factor || 0) }; });
+    const qty = Number(String(l.qty).replace(',', '.')) || 0;
+    const kgPerUnit = l.unit_code === 'kg' ? 1 : l.unit_code === 'tan' ? 1000 : Number(p?.kg_per_bao || 0);
+    const perKg = kgPerUnit ? (Number(l.price) || 0) / kgPerUnit : 0;
+    const kgU = p?.units.find(x => x.unit_code === 'kg' && x.is_active), baoU = p?.units.find(x => x.unit_code === 'bao');
+    const saleKg = kgU ? Number(kgU.retail_price) : baoU && p ? Number(baoU.retail_price) / Number(p.kg_per_bao) : 0;
+    const warn = Number(l.price) > 0 && saleKg > 0 && (perKg < saleKg * 0.3 || perKg > saleKg * 1.5);
+    return { ...l, p, u, qtyN: qty, kgPerUnit, perKg, saleKg, warn, total: Math.round(qty * (Number(l.price) || 0)), base: qty * (u?.factor || 0) }; });
   const total = calc.reduce((a, l) => a + l.total, 0);
   const paidN = paid == null ? total : Math.min(Number(paid || 0), total);
   const save = async () => {
@@ -40,9 +46,13 @@ export default function Purchase() {
               <div className="grid grid-cols-3 gap-2 mt-2">
                 <label className="text-xs">Số lượng<Input inputMode="decimal" value={l.qty} onChange={e => upd(l.key, { qty: e.target.value })} /></label>
                 <label className="text-xs">Đơn vị<Select value={l.unit_code} onChange={e => upd(l.key, { unit_code: e.target.value })}>{l.p?.units.map(u => <option key={u.unit_code} value={u.unit_code}>{u.unit_name}</option>)}</Select></label>
-                <label className="text-xs">Giá nhập / đơn vị (đ)<Input inputMode="numeric" value={l.price} onChange={e => upd(l.key, { price: digits(e.target.value) })} /></label>
+                <label className="text-xs">Giá nhập cho 1 {l.u?.unit_name || 'đơn vị'} (đ)<Input inputMode="numeric" value={l.price} onChange={e => upd(l.key, { price: digits(e.target.value) })} /></label>
               </div>
-              <div className="text-sm mt-1 flex justify-between"><span>= {num(l.base, 3)} bao (tạo 1 lô FIFO)</span><b>{money(l.total)}</b></div>
+              <div className="text-sm mt-1 flex justify-between gap-2"><span>= {num(l.qtyN * l.kgPerUnit, 1)} kg · giá nhập <b>{money(l.perKg)}/kg</b></span><b>{money(l.total)}</b></div>
+              {l.warn && <div className="mt-2 rounded-xl bg-rose-100 text-rose-700 text-sm font-semibold p-2">⚠️ Giá nhập {money(l.perKg)}/kg rất khác giá bán {money(l.saleKg)}/kg. Ô này là giá cho <b>1 {l.u?.unit_name}</b>{l.unit_code !== 'kg' && ` (${num(l.kgPerUnit, 1)} kg)`}.
+                {l.unit_code !== 'kg' && <button type="button" onClick={() => upd(l.key, { price: String(Math.round(Number(l.price) * l.kgPerUnit)) })}
+                  className="block mt-2 rounded-xl bg-white text-rose-700 ring-2 ring-rose-300 px-3 py-1.5 font-bold">
+                  {money(l.price)} là giá mỗi kg → đổi thành {money(Number(l.price) * l.kgPerUnit)}/{l.u?.unit_name.toLowerCase()}</button>}</div>}
             </div>))}
           {!calc.length && <Empty icon="🚚" text="Chưa có dòng hàng" />}
           <Button color="ghost" onClick={addLine} disabled={!prods.data.length}>＋ Thêm dòng hàng</Button>
