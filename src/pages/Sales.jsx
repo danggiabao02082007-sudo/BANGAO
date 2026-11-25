@@ -19,7 +19,7 @@ export default function Sales({ profile }) {
   const [custQ, setCustQ] = useState('');
   const [invDisc, setInvDisc] = useState('');
   const [method, setMethod] = useState('cash');
-  const [paid, setPaid] = useState('');
+  const [paid, setPaid] = useState(null);   // null = trả đủ
   const [given, setGiven] = useState('');
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null);
@@ -31,13 +31,13 @@ export default function Sales({ profile }) {
   const lines = cart.map(l => {
     const p = prods.data?.find(x => x.id === l.product_id); const u = p?.units.find(x => x.unit_code === l.unit_code);
     const list = u ? priceOf(u, tier) : 0;
-    const price = l.price === '' || l.price == null ? list : Number(l.price);
+    const price = l.price == null || l.price === '' ? list : Number(l.price);
     const qty = Number(l.qty) || 0, disc = Number(l.disc) || 0;
-    return { ...l, p, u, list, price, qtyN: qty, discN: disc, total: Math.round(qty * price) - disc, base: qty * (u?.factor || 0) };
+    return { ...l, p, u, list, priceN: price, qtyN: qty, discN: disc, total: Math.round(qty * price) - disc, base: qty * (u?.factor || 0) };
   });
   const subtotal = lines.reduce((s, l) => s + l.total, 0);
   const total = Math.max(0, subtotal - (Number(invDisc) || 0));
-  const paidN = method === 'debt' ? 0 : paid === '' ? total : Math.min(Number(paid), total);
+  const paidN = method === 'debt' ? 0 : paid == null ? total : Math.min(Number(paid || 0), total);
   const debt = total - paidN;
   const change = method === 'cash' && given ? Math.max(0, Number(given) - paidN) : 0;
 
@@ -53,7 +53,7 @@ export default function Sales({ profile }) {
     setCart(c => {
       const i = c.findIndex(x => x.product_id === p.id && x.unit_code === u.unit_code);
       if (i >= 0) return c.map((x, j) => j === i ? { ...x, qty: String(Number(x.qty) + 1) } : x);
-      return [...c, { key: Math.random(), product_id: p.id, unit_code: u.unit_code, qty: '1', price: '', disc: '' }];
+      return [...c, { key: Math.random(), product_id: p.id, unit_code: u.unit_code, qty: '1', price: null, disc: '' }];
     });
   };
   const onSearchKey = e => {
@@ -75,9 +75,9 @@ export default function Sales({ profile }) {
         customer_id: custId || null, account_code: method === 'bank' ? 'bank' : 'cash', paid_amount: paidN,
         cash_given: method === 'cash' && given ? Number(given) : null, discount: Number(invDisc) || 0,
         items: lines.map(l => ({ product_id: l.product_id, unit_code: l.unit_code, quantity: l.qtyN,
-          unit_price: canPrice && l.price !== '' ? l.price : null, discount: l.discN }))
+          unit_price: canPrice && l.price != null && l.price !== '' ? Number(l.price) : null, discount: l.discN }))
       } });
-      setDone(r); setCart([]); setInvDisc(''); setPaid(''); setGiven(''); setCustId(''); setMethod('cash');
+      setDone(r); setCart([]); setInvDisc(''); setPaid(null); setGiven(''); setCustId(''); setMethod('cash');
       prods.reload(); custs.reload();
     } catch (e) { toast(e.message, 'err'); }
     setBusy(false);
@@ -155,9 +155,9 @@ export default function Sales({ profile }) {
                 </div>
                 <div className="grid grid-cols-3 gap-2 mt-2">
                   <label className="text-xs">SL<Input inputMode="decimal" value={l.qty} onChange={e => upd(l.key, { qty: e.target.value.replace(',', '.').replace(/[^\d.]/g, '') })} className="!py-1.5" /></label>
-                  <label className="text-xs">Đơn vị<Select value={l.unit_code} onChange={e => upd(l.key, { unit_code: e.target.value, price: '' })} className="!py-1.5">
+                  <label className="text-xs">Đơn vị<Select value={l.unit_code} onChange={e => upd(l.key, { unit_code: e.target.value, price: null })} className="!py-1.5">
                     {l.p?.units.filter(u => u.is_active).map(u => <option key={u.unit_code} value={u.unit_code}>{u.unit_name}</option>)}</Select></label>
-                  <label className="text-xs">Đơn giá<Input inputMode="numeric" disabled={!canPrice} value={l.price === '' ? l.list : l.price}
+                  <label className="text-xs">Đơn giá (đ)<Input inputMode="numeric" disabled={!canPrice} value={l.price == null ? l.list : l.price} placeholder={String(l.list)}
                     onChange={e => upd(l.key, { price: digits(e.target.value) })} className="!py-1.5" /></label>
                 </div>
                 <div className="flex items-center gap-2 mt-2">
@@ -179,13 +179,13 @@ export default function Sales({ profile }) {
           </div>
           <div className="grid grid-cols-3 gap-2 mt-3">
             {[['cash', '💵 Tiền mặt'], ['bank', '🏦 Chuyển khoản'], ['debt', '📒 Ghi nợ']].map(([k, t]) => (
-              <button key={k} onClick={() => { setMethod(k); setPaid(''); }} className={cx('rounded-2xl py-2 text-sm font-bold',
+              <button key={k} onClick={() => { setMethod(k); setPaid(null); }} className={cx('rounded-2xl py-2 text-sm font-bold',
                 method === k ? 'bg-gradient-to-r from-ruong-600 to-lime-500 text-white' : 'bg-slate-100')}>{t}</button>))}
           </div>
           {method !== 'debt' && (
             <div className="grid grid-cols-2 gap-2 mt-3">
               <Field label="Khách trả (thanh toán)" hint="Bớt đi = trả một phần, phần còn lại ghi nợ">
-                <Input inputMode="numeric" value={paid === '' ? total : paid} onChange={e => setPaid(digits(e.target.value))} /></Field>
+                <Input inputMode="numeric" value={paid == null ? total : paid} placeholder="0" onChange={e => setPaid(digits(e.target.value))} /></Field>
               {method === 'cash' && <Field label="Khách đưa" hint={change ? `Tiền thừa: ${money(change)}` : ' '}>
                 <Input inputMode="numeric" value={given} onChange={e => setGiven(digits(e.target.value))} placeholder="Để tính tiền thừa" /></Field>}
             </div>)}

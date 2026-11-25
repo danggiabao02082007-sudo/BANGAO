@@ -1,7 +1,13 @@
-const nf = new Intl.NumberFormat('vi-VN');
+/** Nhóm 3 chữ số bằng dấu chấm: 1000000 -> 1.000.000 (không phụ thuộc ngôn ngữ trình duyệt) */
+export const group = s => String(s).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 /** 12.500.000đ */
-export const money = v => nf.format(Math.round(Number(v) || 0)) + 'đ';
-export const num = (v, d = 2) => new Intl.NumberFormat('vi-VN', { maximumFractionDigits: d }).format(Number(v) || 0);
+export const money = v => { const n = Math.round(Number(v) || 0); return (n < 0 ? '-' : '') + group(Math.abs(n)) + 'đ'; };
+/** Số thập phân kiểu Việt Nam: 1.234,5 */
+export const num = (v, d = 2) => {
+  const n = Number(v) || 0, f = Math.abs(n).toFixed(d).replace(/\.?0+$/, '');
+  const [i, dec] = f.split('.');
+  return (n < 0 ? '-' : '') + group(i) + (dec ? ',' + dec : '');
+};
 const pad = n => String(n).padStart(2, '0');
 const vn = d => new Date(new Date(d).toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
 /** dd/mm/yyyy */

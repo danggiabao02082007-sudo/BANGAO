@@ -84,8 +84,8 @@ function ProductForm({ p, isOwner, onSaved }) {
   const priceRow = (k, label, on) => (
     <div className={cx('grid grid-cols-[90px_1fr_1fr] gap-2 items-end', on === false && 'opacity-50')}>
       <span className="font-bold pb-3">{label}</span>
-      <Field label="Giá lẻ"><Input inputMode="numeric" value={f[k + '_r']} onChange={set(k + '_r', digits)} disabled={on === false} /></Field>
-      <Field label="Giá sỉ"><Input inputMode="numeric" value={f[k + '_w']} onChange={set(k + '_w', digits)} disabled={on === false} /></Field>
+      <Field label="Giá lẻ (đ)"><Input inputMode="numeric" value={f[k + '_r']} onChange={set(k + '_r', digits)} disabled={on === false} /></Field>
+      <Field label="Giá sỉ (đ)"><Input inputMode="numeric" value={f[k + '_w']} onChange={set(k + '_w', digits)} disabled={on === false} /></Field>
     </div>);
   return (
     <form onSubmit={save} className="space-y-3">

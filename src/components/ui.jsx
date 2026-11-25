@@ -41,7 +41,11 @@ export function Field({ label, hint, children, className = '' }) {
   );
 }
 export const inputCls = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-[16px] focus:outline-none focus:ring-2 focus:ring-ruong-400';
-export const Input = p => <input {...p} className={cx(inputCls, p.className)} />;
+const groupDigits = v => String(v ?? '').replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+/** Ô nhập. inputMode="numeric" = ô tiền: tự hiển thị 1.000.000 khi gõ (trang gọi digits() để bỏ dấu chấm). */
+export const Input = p => p.inputMode === 'numeric'
+  ? <input {...p} value={groupDigits(p.value)} className={cx(inputCls, p.className)} />
+  : <input {...p} className={cx(inputCls, p.className)} />;
 export const Select = ({ children, ...p }) => <select {...p} className={cx(inputCls, p.className)}>{children}</select>;
 
 export function Stat({ label, value, sub, icon, grad }) {

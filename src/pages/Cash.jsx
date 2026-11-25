@@ -27,7 +27,7 @@ export default function Cash() {
               f.direction === d ? (d === 'in' ? 'bg-gradient-to-r from-ruong-600 to-lime-500 text-white' : 'bg-gradient-to-r from-orange-500 to-rose-500 text-white') : 'bg-slate-100')}>{t}</button>))}
         </div>
         <Field label="Danh mục" className="mt-3"><Select value={f.category} onChange={e => setF({ ...f, category: e.target.value })}>{manual.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}</Select></Field>
-        <Field label="Số tiền" className="mt-2"><Input inputMode="numeric" value={f.amount} onChange={e => setF({ ...f, amount: digits(e.target.value) })} /></Field>
+        <Field label="Số tiền (đ)" className="mt-2"><Input inputMode="numeric" value={f.amount} onChange={e => setF({ ...f, amount: digits(e.target.value) })} /></Field>
         <Field label="Quỹ" className="mt-2"><Select value={f.account} onChange={e => setF({ ...f, account: e.target.value })}><option value="cash">Tiền mặt</option><option value="bank">Ngân hàng</option></Select></Field>
         <Field label="Đối tượng" className="mt-2"><Input value={f.party} onChange={e => setF({ ...f, party: e.target.value })} /></Field>
         <Field label="Ghi chú" className="mt-2"><Input value={f.note} onChange={e => setF({ ...f, note: e.target.value })} /></Field>
