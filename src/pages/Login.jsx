@@ -16,7 +16,7 @@ export default function Login() {
       <RiceScene className="fixed inset-0 w-full h-full -z-10" />
       <form onSubmit={submit} className="w-full max-w-sm rounded-[2rem] bg-white/95 shadow-2xl p-6 ring-4 ring-lua-200/70">
         <div className="text-center mb-5">
-          <img src="icons/icon-192.png" alt="" className="w-20 h-20 rounded-3xl mx-auto shadow-lg" />
+          <img src="icons/icon-192.png" alt="" className="w-20 h-20 rounded-3xl mx-auto shadow-lg heartbeat" />
           <h1 className="mt-3 text-3xl font-extrabold bg-gradient-to-r from-ruong-700 via-lime-600 to-lua-600 bg-clip-text text-transparent">Đại lý Bốn Biển</h1>
           <p className="text-slate-600 text-sm">Quản lý nhập · bán · kho · công nợ</p>
         </div>

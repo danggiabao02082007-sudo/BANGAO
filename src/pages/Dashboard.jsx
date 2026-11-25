@@ -11,7 +11,7 @@ function Bars({ rows, label }) {
       {rows.map((r, i) => (
         <div key={i} className="flex-1 flex flex-col items-center justify-end h-full">
           <div className="text-[10px] font-bold text-slate-600 mb-1">{r.v ? num(r.v / 1e6, 1) + 'tr' : ''}</div>
-          <div className={cx('w-full rounded-t-xl bg-gradient-to-t', BAR[i % BAR.length])} style={{ height: `${Math.max(3, (r.v / max) * 100)}%` }} title={money(r.v)} />
+          <div className={cx('w-full rounded-t-xl bg-gradient-to-t origin-bottom', BAR[i % BAR.length])} style={{ height: `${Math.max(3, (r.v / max) * 100)}%`, animation: `growBar .8s ${i * .07}s cubic-bezier(.2,.8,.2,1) both` }} title={money(r.v)} />
           <div className="text-[11px] font-semibold mt-1">{r.l}</div>
         </div>
       ))}
@@ -39,12 +39,12 @@ export default function Dashboard({ go, profile }) {
         ))}
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-        <Stat icon="🌾" label="Doanh thu hôm nay" value={money(d.revenue_today)} sub={`${d.invoices_today} hóa đơn · ${date(d.day)}`} grad="from-lua-500 to-orange-400" />
-        <Stat icon="💵" label="Tiền thực thu hôm nay" value={money(d.cash_in_today)} sub="Gồm tiền bán + thu nợ, trừ hoàn tiền" grad="from-ruong-600 to-emerald-400" />
-        {d.can_see_profit && <Stat icon="📈" label="Lợi nhuận hôm nay" value={money(d.gross_profit_today)} sub="Doanh thu − tiền vốn" grad="from-violet-600 to-fuchsia-400" />}
-        <Stat icon="📒" label="Khách còn nợ" value={money(d.receivable)} grad="from-pink-500 to-rose-400" />
-        <Stat icon="🏭" label="Nợ nhà cung cấp" value={money(d.payable)} grad="from-sky-600 to-cyan-400" />
-        <Stat icon="🧺" label="Tồn kho" value={`${num(d.stock_bao, 1)} bao`} sub={`≈ ${num(d.stock_kg, 0)} kg${d.stock_value != null ? ' · giá trị ' + money(d.stock_value) : ''}`} grad="from-amber-500 to-yellow-400" />
+        <Stat icon="🌾" label="Doanh thu hôm nay" value={Number(d.revenue_today)} format={money} sub={`${d.invoices_today} hóa đơn · ${date(d.day)}`} grad="from-lua-500 to-orange-400" />
+        <Stat icon="💵" label="Tiền thực thu hôm nay" value={Number(d.cash_in_today)} format={money} sub="Gồm tiền bán + thu nợ, trừ hoàn tiền" grad="from-ruong-600 to-emerald-400" />
+        {d.can_see_profit && <Stat icon="📈" label="Lợi nhuận hôm nay" value={Number(d.gross_profit_today)} format={money} sub="Doanh thu − tiền vốn" grad="from-violet-600 to-fuchsia-400" />}
+        <Stat icon="📒" label="Khách còn nợ" value={Number(d.receivable)} format={money} grad="from-pink-500 to-rose-400" />
+        <Stat icon="🏭" label="Nợ nhà cung cấp" value={Number(d.payable)} format={money} grad="from-sky-600 to-cyan-400" />
+        <Stat icon="🧺" label="Tồn kho" value={Number(d.stock_bao)} format={v => num(v, 1) + ' bao'} sub={`≈ ${num(d.stock_kg, 0)} kg${d.stock_value != null ? ' · giá trị ' + money(d.stock_value) : ''}`} grad="from-amber-500 to-yellow-400" />
       </div>
       <p className="text-xs text-slate-600 bg-white/80 rounded-xl px-3 py-2">ℹ️ Doanh thu, tiền thực thu và lợi nhuận là 3 chỉ tiêu riêng. Khách trả nợ cũ làm tăng <b>thực thu</b>, không làm tăng <b>doanh thu</b>.</p>
       <div className="grid lg:grid-cols-2 gap-4">

@@ -45,11 +45,24 @@ export default memo(function RiceScene({ className = '' }) {
       </defs>
       <rect width="1060" height="480" fill="url(#sky)" />
       <circle cx="860" cy="90" r="150" fill="url(#glow)" />
+      <g className="sunrays" stroke="#FFD54F" strokeWidth="5" strokeLinecap="round" opacity=".75">
+        {Array.from({ length: 12 }, (_, i) => { const a = i * Math.PI / 6; return <line key={i} x1={860 + Math.cos(a) * 58} y1={90 + Math.sin(a) * 58} x2={860 + Math.cos(a) * (i % 2 ? 74 : 86)} y2={90 + Math.sin(a) * (i % 2 ? 74 : 86)} />; })}
+      </g>
       <circle cx="860" cy="90" r="46" fill="url(#sun)" />
       <g fill="#fff" opacity=".9" className="cloud"><ellipse cx="180" cy="70" rx="60" ry="20" /><ellipse cx="220" cy="58" rx="40" ry="22" /><ellipse cx="150" cy="62" rx="30" ry="16" /></g>
       <g fill="#fff" opacity=".8" className="cloud slow"><ellipse cx="560" cy="110" rx="70" ry="18" /><ellipse cx="600" cy="98" rx="42" ry="20" /></g>
-      {/* chim cò */}
-      <g stroke="#334155" strokeWidth="2" fill="none" strokeLinecap="round"><path d="M380 80 q8 -8 16 0 q8 -8 16 0" /><path d="M420 105 q6 -6 12 0 q6 -6 12 0" /></g>
+      {/* đàn cò trắng bay ngang trời */}
+      {[[60, 1, ''], [110, .8, 'b2'], [150, .65, 'b3']].map(([y, s, c], k) => (
+        <g key={k} className={`bird ${c}`}>
+          <g transform={`translate(0 ${y}) scale(${s})`}>
+            {[[0, 0], [34, 14], [-30, 18]].map(([dx, dy], i) => (
+              <g key={i} transform={`translate(${dx} ${dy})`}>
+                <ellipse cx="0" cy="0" rx="13" ry="5" fill="#fff" stroke="#CBD5E1" />
+                <path d="M11 -2 l10 -3 l-9 6z" fill="#F59E0B" />
+                <path className="wing" d="M-6 -2 Q-2 -20 10 -4 Z" fill="#F8FAFC" stroke="#CBD5E1" style={{ animationDelay: `${i * .15}s` }} />
+              </g>))}
+          </g>
+        </g>))}
       {/* núi xa */}
       <path d="M0 230 L120 150 L220 210 L340 130 L470 220 L600 140 L720 215 L850 150 L1060 230 V480 H0Z" fill="#86C5A4" opacity=".7" />
       <path d="M0 250 L150 190 L290 240 L430 180 L580 245 L760 185 L920 240 L1060 210 V480 H0Z" fill="#5FA67F" opacity=".8" />
@@ -66,6 +79,20 @@ export default memo(function RiceScene({ className = '' }) {
       <g stroke="#166534" strokeWidth="2" opacity=".5">
         {Array.from({ length: 50 }, (_, i) => <path key={i} d={`M${i * 22 + 6} 312 l-3 -9 M${i * 22 + 6} 312 l3 -9`} />)}
       </g>
+      {/* chuồn chuồn lượn trên ruộng */}
+      {[[180, 300, ''], [640, 280, 'd2']].map(([x, y, c], k) => (
+        <g key={k} transform={`translate(${x} ${y})`}><g className={`dragonfly ${c}`}>
+          <rect x="-1.5" y="-2" width="26" height="4" rx="2" fill="#0EA5E9" /><circle cx="-2" cy="0" r="4" fill="#0369A1" />
+          <g className="dwing" fill="#E0F2FE" opacity=".85"><ellipse cx="6" cy="-7" rx="9" ry="3.5" /><ellipse cx="6" cy="7" rx="9" ry="3.5" />
+            <ellipse cx="14" cy="-6" rx="8" ry="3" /><ellipse cx="14" cy="6" rx="8" ry="3" /></g>
+        </g></g>))}
+      {/* mặt nước lấp lánh */}
+      <g fill="#fff">{[[120, 330], [260, 326], [410, 334], [560, 329]].map(([x, y], i) =>
+        <path key={i} className="shimmer" style={{ animationDelay: `${i * .7}s` }} d={`M${x} ${y} l3 -6 l3 6 l-3 6z`} />)}</g>
+      {/* hạt lúa vàng rơi nhẹ */}
+      {Array.from({ length: 10 }, (_, i) => (
+        <ellipse key={i} className="falling" cx={60 + i * 103} cy="-10" rx="3.5" ry="6" fill={i % 2 ? '#FACC15' : '#FDE68A'}
+          style={{ animationDuration: `${9 + (i % 4) * 2.5}s`, animationDelay: `${-i * 1.7}s` }} />))}
       {/* bông lúa tiền cảnh */}
       <rect y="398" width="1060" height="82" fill="#A16207" opacity=".25" />
       {stalks}

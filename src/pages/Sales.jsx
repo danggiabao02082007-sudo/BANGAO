@@ -218,8 +218,13 @@ export function DoneModal({ inv, onClose }) {
   }, [inv.id]);
   return (
     <Modal title="Đã lưu hóa đơn" onClose={onClose}>
-      <div className="text-center">
-        <div className="text-5xl">🎉</div>
+      <div className="text-center relative">
+        <div className="pointer-events-none absolute inset-0 overflow-visible" aria-hidden="true">
+          {Array.from({ length: 26 }, (_, i) => { const a = (i / 26) * Math.PI * 2, d = 90 + (i % 5) * 22;
+            return <span key={i} className="grain-burst" style={{ '--dx': `${Math.cos(a) * d}px`, '--dy': `${Math.sin(a) * d - 30}px`, '--r': `${i * 47}deg`,
+              background: ['#FACC15', '#FFFFFF', '#F59E0B', '#FDE047', '#84CC16'][i % 5], boxShadow: '0 0 0 1.5px #B45309', animationDelay: `${(i % 3) * .05}s` }} />; })}
+        </div>
+        <div className="text-5xl floaty">🎉</div>
         <p className="text-xl font-extrabold mt-2">{inv.invoice_code}</p>
         <p className="mt-1">Tổng {money(inv.total_amount)} · Đã trả {money(inv.paid_amount)}</p>
         {inv.debt_amount > 0 && <p className="text-rose-600 font-bold">Ghi nợ {money(inv.debt_amount)}</p>}

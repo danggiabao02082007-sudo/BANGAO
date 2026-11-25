@@ -73,7 +73,7 @@ export default function App() {
             <button key={m.id} onClick={() => go(m.id)}
               className={cx('w-full flex items-center gap-3 rounded-2xl px-3 py-2.5 text-left font-semibold transition',
                 m.id === cur.id ? cx('text-white shadow-md bg-gradient-to-r', m.g) : 'hover:bg-ruong-50 text-ink')}>
-              <span className="text-xl">{m.icon}</span><span className="flex-1">{m.label}</span>
+              <span key={m.id === cur.id ? 'on' : 'off'} className={cx('text-xl', m.id === cur.id && 'wiggle')}>{m.icon}</span><span className="flex-1">{m.label}</span>
               <span className={cx('text-[11px] opacity-60')}>{m.n}</span>
             </button>
           ))}
@@ -85,7 +85,7 @@ export default function App() {
         {/* Thanh trên */}
         <header className={cx('sticky top-0 z-20 text-white bg-gradient-to-r shadow-md grain-pattern', cur.g)} style={{ paddingTop: 'env(safe-area-inset-top)' }}>
           <div className="max-w-6xl mx-auto flex items-center gap-3 px-4 py-3">
-            <span className="text-3xl drop-shadow">{cur.icon}</span>
+            <span className="text-3xl drop-shadow floaty">{cur.icon}</span>
             <div className="flex-1 min-w-0">
               <h1 className="text-xl font-extrabold leading-tight drop-shadow-sm">{cur.label}</h1>
               <p className="text-xs opacity-90 truncate">{profile.full_name} · {ROLE[profile.role]}</p>
@@ -95,7 +95,7 @@ export default function App() {
         </header>
 
         <main className="max-w-6xl mx-auto px-3 sm:px-4 pt-4 pb-32 lg:pb-10">
-          <Suspense fallback={<Loading />}><Page profile={profile} go={go} /></Suspense>
+          <Suspense fallback={<Loading />}><div key={cur.id} className="anim-in"><Page profile={profile} go={go} /></div></Suspense>
         </main>
       </div>
 
@@ -104,7 +104,7 @@ export default function App() {
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {MOBILE.map(id => menu.find(m => m.id === id)).filter(Boolean).map(m => (
           <button key={m.id} onClick={() => go(m.id)} className="py-2 flex flex-col items-center">
-            <span className={cx('text-xl w-11 h-8 grid place-items-center rounded-full', m.id === cur.id && cx('bg-gradient-to-r', m.g))}>{m.icon}</span>
+            <span key={m.id === cur.id ? 'on' : 'off'} className={cx('text-xl w-11 h-8 grid place-items-center rounded-full', m.id === cur.id && cx('bg-gradient-to-r wiggle', m.g))}>{m.icon}</span>
             <span className={cx('text-[10px] leading-tight font-bold mt-0.5 whitespace-nowrap', m.id === cur.id ? 'text-ruong-700' : 'text-slate-600')}>{m.short || m.label}</span>
           </button>
         ))}
@@ -133,7 +133,7 @@ export default function App() {
 function Brand() {
   return (
     <div className="px-5 py-5 flex items-center gap-3">
-      <img src="icons/icon-192.png" alt="" className="w-12 h-12 rounded-2xl shadow" />
+      <img src="icons/icon-192.png" alt="" className="w-12 h-12 rounded-2xl shadow heartbeat" />
       <div><div className="font-extrabold text-lg bg-gradient-to-r from-ruong-700 via-lime-600 to-lua-600 bg-clip-text text-transparent">Đại lý Bốn Biển</div>
         <div className="text-xs text-slate-500">Quản lý cửa hàng gạo</div></div>
     </div>

@@ -48,12 +48,24 @@ export const Input = p => p.inputMode === 'numeric'
   : <input {...p} className={cx(inputCls, p.className)} />;
 export const Select = ({ children, ...p }) => <select {...p} className={cx(inputCls, p.className)}>{children}</select>;
 
-export function Stat({ label, value, sub, icon, grad }) {
+/** Số đếm tăng dần từ 0 tới giá trị thật */
+export function CountUp({ value, format = String, ms = 900 }) {
+  const [v, setV] = useState(0);
+  useEffect(() => {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) { setV(value); return; }
+    let raf, t0;
+    const step = t => { t0 ??= t; const k = Math.min(1, (t - t0) / ms); setV(value * (1 - Math.pow(1 - k, 3))); if (k < 1) raf = requestAnimationFrame(step); };
+    raf = requestAnimationFrame(step); return () => cancelAnimationFrame(raf);
+  }, [value, ms]);
+  return format(v);
+}
+
+export function Stat({ label, value, sub, icon, grad, format }) {
   return (
-    <div className={cx('rounded-3xl p-4 text-white shadow-soft bg-gradient-to-br relative overflow-hidden', grad)}>
-      <div className="absolute -right-3 -bottom-4 text-6xl opacity-25 select-none">{icon}</div>
+    <div className={cx('shine rounded-3xl p-4 text-white shadow-soft bg-gradient-to-br relative overflow-hidden', grad)}>
+      <div className="absolute -right-3 -bottom-4 text-6xl opacity-25 select-none floaty">{icon}</div>
       <div className="text-[13px] font-semibold opacity-95">{icon} {label}</div>
-      <div className="text-[18px] sm:text-[22px] font-extrabold mt-1 leading-tight whitespace-nowrap">{value}</div>
+      <div className="text-[18px] sm:text-[22px] font-extrabold mt-1 leading-tight whitespace-nowrap">{typeof value === 'number' ? <CountUp value={value} format={format} /> : value}</div>
       {sub && <div className="text-xs mt-1 opacity-90">{sub}</div>}
     </div>
   );
