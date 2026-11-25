@@ -181,5 +181,29 @@ ok(r.error?.includes('không có quyền'), 'Nhân viên không xem được chi
 e = await staff.from('sales_item_costs').select('*');
 ok((e.data || []).length === 0, 'Nhân viên không đọc được bảng giá vốn');
 
+
+console.log('\n12. Lợi nhuận thực = doanh thu − vốn − chi tiêu');
+const rp0 = (await owner.rpc('real_profit_report', { p_from: day, p_to: day })).data[0];
+const dr0 = (await owner.rpc('daily_report', { p_from: day, p_to: day })).data[0];
+eq(rp0.revenue, dr0.revenue, 'Doanh thu giữ nguyên như báo cáo cũ');
+eq(rp0.gross_profit, dr0.profit, 'Lợi nhuận (doanh thu − vốn) giữ nguyên như báo cáo cũ');
+await rpc(owner, 'save_expense', { p: { name: 'Điện', amount: 400000 } });
+const ex2 = await rpc(owner, 'save_expense', { p: { name: 'Bốc xếp', amount: 250000 } });
+const rp1 = (await owner.rpc('real_profit_report', { p_from: day, p_to: day })).data[0];
+eq(rp1.expenses - rp0.expenses, 650000, 'Chi tiêu trong ngày tăng đúng 650.000');
+eq(rp1.real_profit, Number(rp1.revenue) - Number(rp1.cost) - Number(rp1.expenses), 'Lợi nhuận thực = doanh thu − vốn − chi tiêu');
+eq(rp1.gross_profit, rp0.gross_profit, 'Chi tiêu không làm đổi lợi nhuận (doanh thu − vốn)');
+await rpc(owner, 'save_expense', { p: { id: ex2.data.id, name: 'Bốc xếp', amount: 250000, expense_date: '2020-01-15' } });
+const rp2 = (await owner.rpc('real_profit_report', { p_from: day, p_to: day })).data[0];
+eq(rp1.expenses - rp2.expenses, 250000, 'Đổi ngày khoản chi → chuyển sang ngày khác');
+const jan = (await owner.rpc('real_profit_report', { p_from: '2020-01-01', p_to: '2020-01-31' })).data;
+eq(jan.reduce((a, x) => a + Number(x.expenses), 0), 250000, 'Cộng theo tháng đúng (tháng 01/2020 có 250.000 chi)');
+eq(jan.length, 31, 'Tháng đủ 31 dòng ngày');
+await rpc(owner, 'create_purchase_receipt', { p: { items: [{ product_id: st25, unit_code: 'bao', quantity: 1, unit_price: 1000000 }], paid_amount: 1000000 } });
+const rp3 = (await owner.rpc('real_profit_report', { p_from: day, p_to: day })).data[0];
+eq(rp3.expenses, rp2.expenses, 'Chi nhập hàng KHÔNG bị tính trùng vào chi tiêu');
+r = await rpc(staff, 'real_profit_report', { p_from: day, p_to: day });
+ok(r.error?.includes('không có quyền'), 'Nhân viên không xem được lợi nhuận thực');
+
 console.log(`\nKẾT QUẢ: ${pass} đạt, ${fail} lỗi`);
 process.exit(fail ? 1 : 0);

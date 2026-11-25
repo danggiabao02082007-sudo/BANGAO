@@ -11,9 +11,10 @@ export default function Reports() {
   const today = isoDay();
   const [day, setDay] = useState(today);
   const mFrom = day.slice(0, 8) + '01', mTo = lastDay(day) > today && day.slice(0, 7) === today.slice(0, 7) ? today : lastDay(day);
-  const month = useLoad(() => rpc('daily_report', { p_from: mFrom, p_to: mTo }), [mFrom, mTo]);
+  const month = useLoad(() => rpc('real_profit_report', { p_from: mFrom, p_to: mTo }), [mFrom, mTo]);
   const detail = useLoad(() => rpc('daily_cost_detail', { p_day: day }), [day]);
-  const sel = month.data?.find(r => r.day === day) || { revenue: 0, cost: 0, profit: 0, invoices: 0 };
+  const sel0 = month.data?.find(r => r.day === day) || { revenue: 0, cost: 0, expenses: 0, gross_profit: 0, real_profit: 0, invoices: 0 };
+  const sel = { ...sel0, profit: sel0.gross_profit };
   const sum = k => (month.data || []).reduce((a, r) => a + Number(r[k]), 0);
   const max = Math.max(1, ...(month.data || []).map(r => Number(r.revenue)));
 
@@ -44,6 +45,13 @@ export default function Reports() {
           </div>
         </div>
 
+        <div className={cx('rounded-3xl p-5 text-white shadow-soft bg-gradient-to-br relative overflow-hidden shine', Number(sel.real_profit) >= 0 ? 'from-teal-600 to-cyan-500' : 'from-rose-600 to-red-500')}>
+          <div className="absolute -right-2 -bottom-4 text-7xl opacity-25">🏆</div>
+          <div className="font-bold">Lợi nhuận thực ngày {date(day)}</div>
+          <div className="text-3xl font-extrabold mt-1">{money(sel.real_profit)}</div>
+          <div className="text-sm opacity-95 mt-1">= Doanh thu {money(sel.revenue)} − Vốn {money(sel.cost)} − Chi tiêu {money(sel.expenses)}</div>
+        </div>
+
         <Card title={`Chi tiết tiền vốn ngày ${date(day)}`} icon="🧮" accent="from-violet-500 to-fuchsia-500" bodyClass="p-0">
           {detail.loading ? <Loading /> : detail.error ? <div className="p-4"><ErrorBox error={detail.error} /></div> : !detail.data.length
             ? <p className="p-4 text-slate-500">Ngày này chưa bán hàng.</p> : <>
@@ -71,9 +79,13 @@ export default function Reports() {
         <Card title={`Lợi nhuận theo ngày · tháng ${day.slice(5, 7)}/${day.slice(0, 4)}`} icon="📈" accent="from-ruong-600 to-teal-500" bodyClass="p-0">
           <div className="grid grid-cols-2 gap-2 p-4">
             <div className="rounded-2xl bg-lua-50 p-3"><div className="text-xs font-semibold">Tổng doanh thu tháng</div><b className="text-lg text-lua-700">{money(sum('revenue'))}</b></div>
-            <div className="rounded-2xl bg-ruong-50 p-3"><div className="text-xs font-semibold">Tổng lợi nhuận tháng</div><b className="text-lg text-ruong-700">{money(sum('profit'))}</b></div>
+            <div className="rounded-2xl bg-ruong-50 p-3"><div className="text-xs font-semibold">Tổng lợi nhuận tháng</div><b className="text-lg text-ruong-700">{money(sum('gross_profit'))}</b>
+              <div className="text-[11px]">= doanh thu − vốn {money(sum('cost'))}</div></div>
+            <div className="col-span-2 rounded-2xl bg-teal-50 p-3 ring-2 ring-teal-200"><div className="text-xs font-semibold">🏆 Lợi nhuận thực tháng</div>
+              <b className={cx('text-xl', sum('real_profit') >= 0 ? 'text-teal-700' : 'text-rose-600')}>{money(sum('real_profit'))}</b>
+              <div className="text-xs mt-0.5">= Doanh thu {money(sum('revenue'))} − Vốn {money(sum('cost'))} − Chi tiêu {money(sum('expenses'))}</div></div>
           </div>
-          <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 px-4 py-2 text-xs font-bold text-slate-500 border-y"><span>Ngày</span><span className="text-right">Doanh thu</span><span className="text-right w-28">Lợi nhuận</span></div>
+          <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 px-4 py-2 text-xs font-bold text-slate-500 border-y"><span>Ngày</span><span className="text-right">Doanh thu</span><span className="text-right w-28">Lợi nhuận<br /><span className="text-teal-700">LN thực</span></span></div>
           <div className="divide-y">
             {[...month.data].reverse().map(r => (
               <button key={r.day} onClick={() => setDay(r.day)}
@@ -83,11 +95,12 @@ export default function Reports() {
                   <span className="block h-1.5 mt-1 rounded-full bg-gradient-to-r from-lua-400 to-orange-400" style={{ width: `${Number(r.revenue) / max * 100}%` }} />
                 </span>
                 <span className="text-right text-sm">{Number(r.revenue) ? money(r.revenue) : '—'}</span>
-                <b className={cx('text-right w-28', Number(r.profit) < 0 ? 'text-rose-600' : Number(r.profit) ? 'text-ruong-700' : 'text-slate-400')}>{Number(r.revenue) ? money(r.profit) : '—'}</b>
+                <span className="text-right w-28"><b className={cx('block', Number(r.gross_profit) < 0 ? 'text-rose-600' : Number(r.gross_profit) ? 'text-ruong-700' : 'text-slate-400')}>{Number(r.revenue) ? money(r.gross_profit) : '—'}</b>
+                  {(Number(r.revenue) > 0 || Number(r.expenses) > 0) && <span className={cx('block text-xs font-bold', Number(r.real_profit) < 0 ? 'text-rose-600' : 'text-teal-700')}>{money(r.real_profit)}</span>}</span>
               </button>))}
           </div>
         </Card>
-        <p className="text-xs text-slate-600 bg-white/80 rounded-xl px-3 py-2">ℹ️ Tiền vốn = tổng (số kg bán của từng món × giá nhập/kg của món đó). Giá nhập lấy theo phiếu nhập gần nhất hoặc giá bạn sửa trong Sản phẩm, và được chốt tại lúc bán. Lợi nhuận ở đây <b>chưa trừ chi tiêu</b> (điện, nước, vận chuyển…), xem các khoản đó ở mục Chi tiêu. Hóa đơn đã hủy không được tính.</p>
+        <p className="text-xs text-slate-600 bg-white/80 rounded-xl px-3 py-2">ℹ️ Tiền vốn = tổng (số kg bán của từng món × giá nhập/kg của món đó). Giá nhập lấy theo phiếu nhập gần nhất hoặc giá bạn sửa trong Sản phẩm, và được chốt tại lúc bán. <b>Lợi nhuận</b> = doanh thu − vốn (chưa trừ chi tiêu). <b>Lợi nhuận thực</b> = doanh thu − vốn − chi tiêu (các khoản ở mục Chi tiêu: điện, nước, vận chuyển…). Chi nhập hàng không tính vào chi tiêu vì đã nằm trong vốn. Hóa đơn đã hủy không được tính.</p>
       </>}
     </div>
   );

@@ -21,7 +21,11 @@ function Bars({ rows, label }) {
 }
 
 export default function Dashboard({ go, profile }) {
-  const { data: d, loading, error } = useLoad(() => rpc('dashboard_summary', {}), []);
+  const { data: d, loading, error } = useLoad(async () => {
+    const s = await rpc('dashboard_summary', {});
+    if (s.can_see_profit) s.real = (await rpc('real_profit_report', { p_from: s.day, p_to: s.day }))[0];
+    return s;
+  }, []);
   if (loading) return <Loading />;
   if (error) return <ErrorBox error={error} />;
   const quick = [
@@ -42,11 +46,14 @@ export default function Dashboard({ go, profile }) {
         <Stat icon="🌾" label="Doanh thu hôm nay" value={Number(d.revenue_today)} format={money} sub={`${d.invoices_today} hóa đơn · ${date(d.day)}`} grad="from-lua-500 to-orange-400" />
         <Stat icon="💵" label="Tiền thực thu hôm nay" value={Number(d.cash_in_today)} format={money} sub="Gồm tiền bán + thu nợ, trừ hoàn tiền" grad="from-ruong-600 to-emerald-400" />
         {d.can_see_profit && <Stat icon="📈" label="Lợi nhuận hôm nay" value={Number(d.gross_profit_today)} format={money} sub="Doanh thu − tiền vốn" grad="from-violet-600 to-fuchsia-400" />}
+        {d.real && <Stat icon="🏆" label="Lợi nhuận thực hôm nay" value={Number(d.real.real_profit)} format={money}
+          sub={`= ${money(d.real.revenue)} − vốn ${money(d.real.cost)} − chi ${money(d.real.expenses)}`}
+          grad={Number(d.real.real_profit) >= 0 ? 'from-teal-600 to-cyan-400' : 'from-rose-600 to-red-400'} />}
         <Stat icon="📒" label="Khách còn nợ" value={Number(d.receivable)} format={money} grad="from-pink-500 to-rose-400" />
         <Stat icon="🏭" label="Nợ nhà cung cấp" value={Number(d.payable)} format={money} grad="from-sky-600 to-cyan-400" />
         <Stat icon="🧺" label="Tồn kho" value={Number(d.stock_bao)} format={v => num(v, 1) + ' bao'} sub={`≈ ${num(d.stock_kg, 0)} kg${d.stock_value != null ? ' · giá trị ' + money(d.stock_value) : ''}`} grad="from-amber-500 to-yellow-400" />
       </div>
-      <p className="text-xs text-slate-600 bg-white/80 rounded-xl px-3 py-2">ℹ️ Doanh thu, tiền thực thu và lợi nhuận là 3 chỉ tiêu riêng. Khách trả nợ cũ làm tăng <b>thực thu</b>, không làm tăng <b>doanh thu</b>.</p>
+      <p className="text-xs text-slate-600 bg-white/80 rounded-xl px-3 py-2">ℹ️ Doanh thu, tiền thực thu và lợi nhuận là 3 chỉ tiêu riêng. Khách trả nợ cũ làm tăng <b>thực thu</b>, không làm tăng <b>doanh thu</b>. <b>Lợi nhuận thực</b> = doanh thu − tiền vốn − chi tiêu (điện, nước, vận chuyển…).</p>
       <div className="grid lg:grid-cols-2 gap-4">
         <Card title="Doanh thu 7 ngày" icon="📅" accent="from-lua-500 to-orange-400">
           <Bars rows={d.last7.map(r => ({ l: date(r.day).slice(0, 5), v: Number(r.revenue) }))} label="Doanh thu 7 ngày" />
