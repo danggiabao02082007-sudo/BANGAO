@@ -134,7 +134,7 @@ function Brand() {
   return (
     <div className="px-5 py-5 flex items-center gap-3">
       <img src="icons/icon-192.png" alt="" className="w-12 h-12 rounded-2xl shadow" />
-      <div><div className="font-extrabold text-lg bg-gradient-to-r from-ruong-700 via-lime-600 to-lua-600 bg-clip-text text-transparent">Gạo Việt</div>
+      <div><div className="font-extrabold text-lg bg-gradient-to-r from-ruong-700 via-lime-600 to-lua-600 bg-clip-text text-transparent">Đại lý Bốn Biển</div>
         <div className="text-xs text-slate-500">Quản lý cửa hàng gạo</div></div>
     </div>
   );
@@ -148,5 +148,5 @@ function UserBox({ profile }) {
     </div>
   );
 }
-const Splash = () => <div className="min-h-screen grid place-items-center bg-ruong-50"><div className="text-center"><div className="text-6xl animate-bounce">🌾</div><div className="font-bold text-ruong-700 mt-2">Gạo Việt</div></div></div>;
+const Splash = () => <div className="min-h-screen grid place-items-center bg-ruong-50"><div className="text-center"><div className="text-6xl animate-bounce">🌾</div><div className="font-bold text-ruong-700 mt-2">Đại lý Bốn Biển</div></div></div>;
 const Blocked = ({ onOut }) => <div className="min-h-screen grid place-items-center p-6 text-center"><div><div className="text-5xl">🔒</div><p className="font-bold mt-3">Tài khoản đang bị khóa. Liên hệ chủ cửa hàng.</p><button className="mt-4 underline" onClick={onOut}>Đăng xuất</button></div></div>;

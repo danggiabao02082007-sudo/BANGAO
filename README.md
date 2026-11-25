@@ -1,4 +1,4 @@
-# 🌾 Gạo Việt — Quản lý & bán gạo
+# 🌾 Đại lý Bốn Biển — Quản lý & bán gạo
 
 Web app cài được trên máy tính và điện thoại (PWA), dùng chung một dữ liệu trên Supabase.
 Xây theo `SPEC.md` — **Giai đoạn 1** (nền tảng) + một phần giai đoạn 2.
