@@ -50,22 +50,28 @@ export default function Products({ profile }) {
       </>}
       {tab === 'history' && <StockHistory />}
       {tab === 'check' && <Reconcile />}
-      {edit && <Modal title={edit.id ? 'Sửa sản phẩm' : 'Thêm sản phẩm'} onClose={() => setEdit(null)}><ProductForm p={edit.id ? edit : null} isOwner={profile.role === 'owner'} onSaved={() => { setEdit(null); list.reload(); }} /></Modal>}
+      {edit && <Modal title={edit.id ? 'Sửa sản phẩm' : 'Thêm sản phẩm'} onClose={() => setEdit(null)}><ProductForm p={edit.id ? edit : null} canCost={mgr} onSaved={() => { setEdit(null); list.reload(); }} /></Modal>}
       {view && <ProductView p={view} mgr={mgr} onClose={() => setView(null)} onEdit={() => { setEdit(view); setView(null); }} onChanged={list.reload} />}
     </div>
   );
 }
 
-function ProductForm({ p, isOwner, onSaved }) {
+function ProductForm({ p, canCost, onSaved }) {
   const toast = useToast();
-  const cats = useLoad(() => q(supabase.from('categories').select('*').order('sort')), []);
+  const cats = useLoad(async () => {
+    const [c, costs] = await Promise.all([q(supabase.from('categories').select('*').order('sort')), canCost && p ? rpc('product_costs', {}) : []]);
+    const cb = costs.find(x => x.product_id === p?.id)?.cost_price;
+    if (cb != null) setF(f => ({ ...f, cost_kg: String(Math.round(cb / p.kg_per_bao)) }));
+    return c;
+  }, []);
   const u = c => p?.units.find(x => x.unit_code === c);
   const [f, setF] = useState({
     name: p?.name || '', product_code: p?.product_code || '', barcode: p?.barcode || '', category_id: p?.category_id || '',
     kg_per_bao: p ? String(p.kg_per_bao) : '50', min_stock: p ? String(p.min_stock) : '5', description: p?.description || '', is_active: p ? p.is_active : true,
     bao_r: String(u('bao')?.retail_price ?? ''), bao_w: String(u('bao')?.wholesale_price ?? ''),
     kg_on: p ? !!u('kg')?.is_active : true, kg_r: String(u('kg')?.retail_price ?? ''), kg_w: String(u('kg')?.wholesale_price ?? ''),
-    tan_on: !!u('tan')?.is_active, tan_r: String(u('tan')?.retail_price ?? ''), tan_w: String(u('tan')?.wholesale_price ?? '')
+    tan_on: !!u('tan')?.is_active, tan_r: String(u('tan')?.retail_price ?? ''), tan_w: String(u('tan')?.wholesale_price ?? ''),
+    cost_kg: ''
   });
   const set = (k, fn = x => x) => e => setF({ ...f, [k]: fn(e.target.type === 'checkbox' ? e.target.checked : e.target.value) });
   const save = async e => {
@@ -73,7 +79,7 @@ function ProductForm({ p, isOwner, onSaved }) {
     try {
       await rpc('save_product', { p: {
         id: p?.id, name: f.name, product_code: f.product_code, barcode: f.barcode, category_id: f.category_id || cats.data[0].id,
-        kg_per_bao: Number(f.kg_per_bao.replace(',', '.')), min_stock: Number(f.min_stock.replace(',', '.')) || 0, description: f.description, is_active: f.is_active,
+        kg_per_bao: Number(f.kg_per_bao.replace(',', '.')), ...(canCost && f.cost_kg !== '' ? { cost_price: Number(f.cost_kg) * Number(f.kg_per_bao.replace(',', '.')) } : {}), min_stock: Number(f.min_stock.replace(',', '.')) || 0, description: f.description, is_active: f.is_active,
         units: [{ unit_code: 'bao', retail_price: +f.bao_r || 0, wholesale_price: +f.bao_w || 0 },
           { unit_code: 'kg', retail_price: +f.kg_r || 0, wholesale_price: +f.kg_w || 0, is_active: f.kg_on },
           { unit_code: 'tan', retail_price: +f.tan_r || 0, wholesale_price: +f.tan_w || 0, is_active: f.tan_on }] } });
@@ -97,6 +103,10 @@ function ProductForm({ p, isOwner, onSaved }) {
         <Field label="Cảnh báo khi tồn ≤ (bao)"><Input inputMode="decimal" value={f.min_stock} onChange={set('min_stock')} /></Field>
       </div>
       <Field label="Mã vạch"><Input value={f.barcode} onChange={set('barcode')} placeholder="Quét hoặc nhập" /></Field>
+      {canCost && <div className="rounded-2xl bg-violet-50 p-3">
+        <Field label="📦 Giá nhập (đ/kg)" hint={`Dùng để tính tiền vốn = số kg bán × giá nhập/kg. Tự cập nhật theo phiếu nhập gần nhất. ${f.cost_kg && f.kg_per_bao ? '≈ ' + money(Number(f.cost_kg) * Number(f.kg_per_bao.replace(',', '.'))) + '/bao' : ''}`}>
+          <Input inputMode="numeric" value={f.cost_kg} onChange={set('cost_kg', digits)} placeholder="vd: 24.000" /></Field>
+      </div>}
       <div className="rounded-2xl bg-lua-50 p-3 space-y-2">
         <b>💰 Giá bán theo đơn vị</b>
         {priceRow('bao', '1 Bao')}
@@ -135,7 +145,7 @@ function ProductView({ p, mgr, onClose, onEdit, onChanged }) {
         <div className="grid sm:grid-cols-3 gap-2 text-sm">
           <div className="rounded-2xl bg-ruong-50 p-3">Tồn kho<br /><b className="text-lg text-ruong-700">{num(p.stock_bao, 3)} bao</b><br />≈ {num(p.stock_kg, 1)} kg</div>
           <div className="rounded-2xl bg-lua-50 p-3">{p.units.filter(u => u.is_active).map(u => <div key={u.unit_code}>{u.unit_name}: <b>{money(u.retail_price)}</b> · sỉ {money(u.wholesale_price)}</div>)}</div>
-          {mgr && <div className="rounded-2xl bg-violet-50 p-3">Giá nhập gần nhất<br /><b className="text-lg">{money(d.data.cost)}/bao</b></div>}
+          {mgr && <div className="rounded-2xl bg-violet-50 p-3">Giá nhập hiện hành<br /><b className="text-lg">{money(Number(d.data.cost || 0) / Number(p.kg_per_bao))}/kg</b><br /><span className="text-xs">= {money(d.data.cost)}/bao</span></div>}
         </div>
         {mgr && <>
           <h4 className="font-bold mt-4 mb-1">📦 Lô hàng còn tồn (xuất theo FIFO từ trên xuống)</h4>

@@ -62,7 +62,7 @@ const { data: lots } = await owner.from('inventory_lots').select('lot_code,qty_r
 eq(lots[0].qty_remaining, 0, 'Lô PN0001 dùng hết trước (FIFO)');
 eq(lots[1].qty_remaining, 7.5, 'Lô PN0002 còn 7,5 bao');
 const { data: pr } = await owner.rpc('profit_report', { p_from: '2000-01-01', p_to: '2100-01-01' });
-eq(pr.cogs, 10 * 1000000 + 2.5 * 1200000, 'Giá vốn FIFO = 10 × 1tr + 2,5 × 1,2tr');
+eq(pr.cogs, 625 * 24000, 'Vốn = 625 kg bán × giá nhập 24.000đ/kg (giá nhập hiện hành lúc bán)');
 
 console.log('\n4. Quy tắc chặn');
 r = await rpc(staff, 'create_sales_invoice', { p: { customer_id: kh.id, items: [{ product_id: st25, unit_code: 'bao', quantity: 1, unit_price: 1000 }], paid_amount: 1000 } });
@@ -160,6 +160,26 @@ eq(r.data[0].revenue, pr2.revenue, 'Doanh thu ngày khớp');
 eq(r.data[0].profit, Number(pr2.revenue) - Number(pr2.cogs), 'Lợi nhuận ngày = doanh thu − vốn');
 r = await rpc(staff, 'daily_report', { p_from: iso, p_to: iso });
 ok(r.error?.includes('không có quyền'), 'Nhân viên không xem được lợi nhuận ngày');
+
+
+console.log('\n11. Vốn = kg bán × giá nhập/kg, chốt lúc bán');
+const day = iso;
+const det = (await owner.rpc('daily_cost_detail', { p_day: day })).data;
+const rep = (await owner.rpc('daily_report', { p_from: day, p_to: day })).data[0];
+eq(det.reduce((a, x) => a + Number(x.cost), 0), rep.cost, 'Tổng chi tiết vốn = vốn trong báo cáo ngày');
+ok(det.every(x => Math.abs(Math.round(Number(x.kg_sold) * Number(x.cost_per_kg)) - Number(x.cost)) <= 1), 'Từng món: vốn = kg × giá nhập/kg');
+r = await rpc(owner, 'save_product', { p: { id: st25, name: 'Gạo ST25', category_id: gao, kg_per_bao: 50, min_stock: 5, cost_price: 50 * 30000,
+  units: [{ unit_code: 'bao', retail_price: 1500000, wholesale_price: 1400000 }, { unit_code: 'kg', retail_price: 32000, wholesale_price: 30000 }] } });
+ok(!r.error, 'Chủ sửa giá nhập thành 30.000đ/kg ' + (r.error || ''));
+const rep2 = (await owner.rpc('daily_report', { p_from: day, p_to: day })).data[0];
+eq(rep2.cost, rep.cost, 'Đổi giá nhập KHÔNG làm thay đổi vốn các hóa đơn đã bán');
+r = await rpc(owner, 'create_sales_invoice', { p: { items: [{ product_id: st25, unit_code: 'kg', quantity: 10 }], paid_amount: 320000 } });
+const rep3 = (await owner.rpc('daily_report', { p_from: day, p_to: day })).data[0];
+eq(rep3.cost - rep2.cost, 10 * 30000, 'Hóa đơn mới: 10 kg × 30.000đ = 300.000đ vốn');
+r = await rpc(staff, 'daily_cost_detail', { p_day: day });
+ok(r.error?.includes('không có quyền'), 'Nhân viên không xem được chi tiết vốn');
+e = await staff.from('sales_item_costs').select('*');
+ok((e.data || []).length === 0, 'Nhân viên không đọc được bảng giá vốn');
 
 console.log(`\nKẾT QUẢ: ${pass} đạt, ${fail} lỗi`);
 process.exit(fail ? 1 : 0);
