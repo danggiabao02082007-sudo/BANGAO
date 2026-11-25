@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#38BDF8"/><stop offset=".45" stop-color="#A3E635"/><stop offset="1" stop-color="#059669"/></linearGradient>
+<radialGradient id="sun" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFFDE7"/><stop offset=".6" stop-color="#FFD54F"/><stop offset="1" stop-color="#FB8C00"/></radialGradient>
+<linearGradient id="t1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FDE047"/><stop offset="1" stop-color="#EAB308"/></linearGradient>
+<linearGradient id="t2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4ADE80"/><stop offset="1" stop-color="#15803D"/></linearGradient>
+<linearGradient id="bowl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F472B6"/><stop offset="1" stop-color="#BE185D"/></linearGradient>
+</defs>
+<rect width="512" height="512" fill="url(#bg)"/>
+<circle cx="390" cy="120" r="62" fill="url(#sun)"/>
+<path d="M0 300 C120 270 260 320 512 280 V512 H0Z" fill="url(#t1)"/>
+<path d="M0 300 C120 270 260 320 512 280" stroke="#FEF9C3" stroke-width="8" fill="none"/>
+<path d="M0 360 C150 330 330 380 512 345 V512 H0Z" fill="url(#t2)"/>
+<path d="M0 360 C150 330 330 380 512 345" stroke="#DCFCE7" stroke-width="8" fill="none"/>
+<!-- bông lúa -->
+<g>
+<path d="M150 470 Q150 260 250 150" stroke="#65A30D" stroke-width="12" fill="none" stroke-linecap="round"/>
+<path d="M150 400 Q95 330 70 300" stroke="#84CC16" stroke-width="14" fill="none" stroke-linecap="round"/>
+<g fill="#FACC15" stroke="#CA8A04" stroke-width="3">
+<ellipse cx="250" cy="150" rx="14" ry="24" transform="rotate(35 250 150)"/>
+<ellipse cx="226" cy="168" rx="14" ry="24" transform="rotate(-25 226 168)"/>
+<ellipse cx="240" cy="190" rx="14" ry="24" transform="rotate(40 240 190)"/>
+<ellipse cx="212" cy="204" rx="14" ry="24" transform="rotate(-30 212 204)"/>
+<ellipse cx="222" cy="232" rx="14" ry="24" transform="rotate(42 222 232)"/>
+<ellipse cx="194" cy="244" rx="14" ry="24" transform="rotate(-32 194 244)"/>
+<ellipse cx="200" cy="274" rx="14" ry="24" transform="rotate(42 200 274)"/>
+</g>
+</g>
+<!-- bát cơm -->
+<path d="M230 330 a116 116 0 0 0 232 0 Z" fill="url(#bowl)"/>
+<rect x="300" y="440" width="92" height="22" rx="11" fill="#9D174D"/>
+<path d="M238 332 C250 270 300 250 346 252 C392 250 442 270 454 332 Z" fill="#FFFFFF"/>
+<g fill="#F8FAFC" stroke="#E2E8F0" stroke-width="2">
+<ellipse cx="300" cy="292" rx="9" ry="15" transform="rotate(30 300 292)"/><ellipse cx="340" cy="272" rx="9" ry="15" transform="rotate(-20 340 272)"/>
+<ellipse cx="384" cy="288" rx="9" ry="15" transform="rotate(25 384 288)"/><ellipse cx="420" cy="310" rx="9" ry="15" transform="rotate(-35 420 310)"/>
+<ellipse cx="270" cy="314" rx="9" ry="15" transform="rotate(-30 270 314)"/><ellipse cx="358" cy="306" rx="9" ry="15" transform="rotate(60 358 306)"/>
+</g>
+<path d="M262 372 h168" stroke="#FBCFE8" stroke-width="8" stroke-linecap="round"/>
+<path d="M280 395 h132" stroke="#FBCFE8" stroke-width="6" stroke-linecap="round" opacity=".7"/>
+</svg>
