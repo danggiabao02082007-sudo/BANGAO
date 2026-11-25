@@ -39,6 +39,7 @@ export default function Settings({ profile }) {
           </div>))}
         <p className="text-xs text-slate-500 mt-3">Tạo tài khoản mới: Supabase → Authentication → Users → Add user. Tài khoản mới mặc định là Nhân viên, đổi quyền tại đây.</p>
       </Card>}
+      <ChangePassword />
       <Card title="Quyền của từng vai trò" icon="🔐" accent="from-amber-500 to-lime-500" className="lg:col-span-2">
         <ul className="text-sm space-y-1 list-disc pl-5">
           <li><b>Chủ cửa hàng:</b> toàn quyền, phân quyền, sửa thông tin cửa hàng.</li>
@@ -48,5 +49,28 @@ export default function Settings({ profile }) {
         </ul>
       </Card>
     </div>
+  );
+}
+
+function ChangePassword() {
+  const toast = useToast();
+  const [a, setA] = useState(''); const [b, setB] = useState(''); const [busy, setBusy] = useState(false);
+  const save = async () => {
+    if (a.length < 8) return toast('Mật khẩu tối thiểu 8 ký tự', 'err');
+    if (a !== b) return toast('Hai lần nhập không khớp', 'err');
+    setBusy(true);
+    const { error } = await supabase.auth.updateUser({ password: a });
+    setBusy(false);
+    if (error) return toast(error.message, 'err');
+    setA(''); setB(''); toast('Đã đổi mật khẩu');
+  };
+  return (
+    <Card title="Đổi mật khẩu của bạn" icon="🔑" accent="from-pink-500 to-orange-400">
+      <div className="space-y-3">
+        <Field label="Mật khẩu mới (tối thiểu 8 ký tự)"><Input type="password" autoComplete="new-password" value={a} onChange={e => setA(e.target.value)} /></Field>
+        <Field label="Nhập lại"><Input type="password" autoComplete="new-password" value={b} onChange={e => setB(e.target.value)} /></Field>
+        <Button color="rose" onClick={save} disabled={busy || !a}>🔑 Đổi mật khẩu</Button>
+      </div>
+    </Card>
   );
 }
