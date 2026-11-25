@@ -27,7 +27,7 @@ export default function Dashboard({ go, profile }) {
   const quick = [
     ['🧾', 'Tạo hóa đơn', 'sales', 'from-ruong-600 to-lime-500'], ['🚚', 'Nhập hàng', 'purchase', 'from-sky-500 to-cyan-400', true],
     ['🍚', 'Thêm sản phẩm', 'products', 'from-lua-500 to-yellow-400', true], ['👨‍🌾', 'Thêm khách hàng', 'customers', 'from-pink-500 to-rose-400'],
-    ['💵', 'Ghi thu', 'cash', 'from-emerald-500 to-teal-400', true], ['💸', 'Ghi chi', 'cash', 'from-orange-500 to-red-400', true]
+    ['💵', 'Ghi thu', 'cash', 'from-emerald-500 to-teal-400', true], ['💸', 'Chi tiêu', 'expenses', 'from-orange-500 to-red-400', true]
   ].filter(q => !q[4] || profile.role !== 'staff');
   return (
     <div className="space-y-4">
@@ -41,7 +41,7 @@ export default function Dashboard({ go, profile }) {
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <Stat icon="🌾" label="Doanh thu hôm nay" value={money(d.revenue_today)} sub={`${d.invoices_today} hóa đơn · ${date(d.day)}`} grad="from-lua-500 to-orange-400" />
         <Stat icon="💵" label="Tiền thực thu hôm nay" value={money(d.cash_in_today)} sub="Gồm tiền bán + thu nợ, trừ hoàn tiền" grad="from-ruong-600 to-emerald-400" />
-        {d.can_see_profit && <Stat icon="📈" label="Lợi nhuận gộp hôm nay" value={money(d.gross_profit_today)} sub="Doanh thu − giá vốn FIFO" grad="from-violet-600 to-fuchsia-400" />}
+        {d.can_see_profit && <Stat icon="📈" label="Lợi nhuận hôm nay" value={money(d.gross_profit_today)} sub="Doanh thu − tiền vốn" grad="from-violet-600 to-fuchsia-400" />}
         <Stat icon="📒" label="Khách còn nợ" value={money(d.receivable)} grad="from-pink-500 to-rose-400" />
         <Stat icon="🏭" label="Nợ nhà cung cấp" value={money(d.payable)} grad="from-sky-600 to-cyan-400" />
         <Stat icon="🧺" label="Tồn kho" value={`${num(d.stock_bao, 1)} bao`} sub={`≈ ${num(d.stock_kg, 0)} kg${d.stock_value != null ? ' · giá trị ' + money(d.stock_value) : ''}`} grad="from-amber-500 to-yellow-400" />

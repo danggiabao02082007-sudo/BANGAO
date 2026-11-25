@@ -6,7 +6,7 @@ import { Card, Button, Input, Select, Field, Empty, Loading, ErrorBox, useLoad, 
 export default function Cash() {
   const toast = useToast();
   const [from, setFrom] = useState(isoDay(new Date(Date.now() - 29 * 864e5))); const [to, setTo] = useState(isoDay());
-  const [f, setF] = useState({ direction: 'out', category: 'transport', amount: '', account: 'cash', party: '', note: '' });
+  const [f, setF] = useState({ direction: 'in', category: 'other_in', amount: '', account: 'cash', party: '', note: '' });
   const cats = useLoad(() => q(supabase.from('expense_categories').select('*')), []);
   const rows = useLoad(() => q(supabase.from('cash_transactions').select('*, cash_accounts(name)').gte('txn_date', from + 'T00:00:00+07:00')
     .lte('txn_date', to + 'T23:59:59+07:00').order('txn_date', { ascending: false }).limit(500)), [from, to]);
@@ -20,9 +20,9 @@ export default function Cash() {
   const tout = (rows.data || []).filter(r => r.direction === 'out').reduce((a, r) => a + Number(r.amount), 0);
   return (
     <div className="grid lg:grid-cols-[360px_1fr] gap-4 items-start">
-      <Card title="Ghi thu / chi khác" icon="✍️" accent="from-fuchsia-500 to-purple-400">
-        <div className="grid grid-cols-2 gap-2">
-          {[['in', '💵 Ghi thu', 'other_in'], ['out', '💸 Ghi chi', 'transport']].map(([d, t, c]) => (
+      <Card title="Ghi thu khác" icon="✍️" accent="from-fuchsia-500 to-purple-400">
+        <div className="grid grid-cols-1 gap-2">
+          {[['in', '💵 Ghi thu khác', 'other_in']].map(([d, t, c]) => (
             <button key={d} onClick={() => setF({ ...f, direction: d, category: c })} className={cx('rounded-2xl py-2 font-bold',
               f.direction === d ? (d === 'in' ? 'bg-gradient-to-r from-ruong-600 to-lime-500 text-white' : 'bg-gradient-to-r from-orange-500 to-rose-500 text-white') : 'bg-slate-100')}>{t}</button>))}
         </div>
@@ -32,7 +32,7 @@ export default function Cash() {
         <Field label="Đối tượng" className="mt-2"><Input value={f.party} onChange={e => setF({ ...f, party: e.target.value })} /></Field>
         <Field label="Ghi chú" className="mt-2"><Input value={f.note} onChange={e => setF({ ...f, note: e.target.value })} /></Field>
         <Button className="w-full mt-3" color="violet" onClick={save} disabled={!Number(f.amount)}>💾 Ghi sổ</Button>
-        <p className="text-xs text-slate-500 mt-2">Thu bán hàng, thu nợ, chi nhập hàng được ghi tự động từ hóa đơn/phiếu.</p>
+        <p className="text-xs text-slate-500 mt-2">Thu bán hàng, thu nợ, chi nhập hàng được ghi tự động. Các khoản chi (điện, nước, vận chuyển…) ghi ở mục <b>💸 Chi tiêu</b> và tự hiện trong sổ quỹ.</p>
       </Card>
       <Card title="Sổ quỹ" icon="📒" accent="from-purple-500 to-pink-500">
         <div className="grid grid-cols-2 gap-2"><Field label="Từ ngày"><Input type="date" value={from} onChange={e => setFrom(e.target.value)} /></Field>

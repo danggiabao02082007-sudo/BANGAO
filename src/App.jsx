@@ -15,6 +15,7 @@ const pages = {
   suppliers: lazy(() => import('./pages/Suppliers.jsx')),
   cash: lazy(() => import('./pages/Cash.jsx')),
   reports: lazy(() => import('./pages/Reports.jsx')),
+  expenses: lazy(() => import('./pages/Expenses.jsx')),
   settings: lazy(() => import('./pages/Settings.jsx'))
 };
 
@@ -28,7 +29,8 @@ export const MENU = [
   { id: 'customers', n: '05', icon: '👨‍🌾', label: 'Khách hàng', short: 'Khách', g: 'from-pink-500 to-rose-400' },
   { id: 'suppliers', n: '06', icon: '🏭', label: 'Nhà cung cấp', g: 'from-indigo-500 to-violet-400', roles: ['owner', 'manager'] },
   { id: 'cash', n: '07', icon: '💰', label: 'Thu chi & công nợ', g: 'from-fuchsia-500 to-purple-400', roles: ['owner', 'manager'] },
-  { id: 'reports', n: '08', icon: '📊', label: 'Báo cáo', g: 'from-orange-500 to-red-400', roles: ['owner', 'manager'] },
+  { id: 'expenses', n: '07', icon: '💸', label: 'Chi tiêu', g: 'from-orange-500 to-rose-500', roles: ['owner', 'manager'] },
+  { id: 'reports', n: '08', icon: '📊', label: 'Doanh thu & lợi nhuận', g: 'from-orange-500 to-red-400', roles: ['owner', 'manager'] },
   { id: 'settings', n: '09', icon: '⚙️', label: 'Cài đặt', g: 'from-slate-500 to-slate-400' }
 ];
 const MOBILE = ['dashboard', 'sales', 'invoices', 'products', 'customers'];

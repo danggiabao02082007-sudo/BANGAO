@@ -128,5 +128,38 @@ ok(d3.gross_profit_today !== null && d3.revenue_today > 0, 'Dashboard chủ th�
 const { data: d4 } = await staff.rpc('dashboard_summary');
 ok(d4.gross_profit_today === null && d4.stock_value === null, 'Dashboard nhân viên ẩn lợi nhuận & giá trị kho');
 
+
+console.log('\n9. Chi tiêu: thêm / sửa / xóa, đồng bộ sổ quỹ');
+r = await rpc(owner, 'save_expense', { p: { name: 'Tiền điện tháng 11', amount: 850000, note: 'EVN' } });
+ok(!r.error, 'Thêm khoản chi ' + (r.error || ''));
+const exId = r.data.id;
+let { data: ex } = await owner.from('expenses').select('*').eq('id', exId).single();
+let { data: ct } = await owner.from('cash_transactions').select('*').eq('id', ex.cash_txn_id).single();
+eq(ct.amount, 850000, 'Sổ quỹ có dòng chi 850.000');
+r = await rpc(owner, 'save_expense', { p: { id: exId, name: 'Tiền điện T11', amount: 900000, note: 'sửa', account_code: 'bank' } });
+ok(!r.error, 'Sửa khoản chi');
+({ data: ct } = await owner.from('cash_transactions').select('amount,party_name').eq('id', ex.cash_txn_id).single());
+ok(Number(ct.amount) === 900000 && ct.party_name === 'Tiền điện T11', 'Sổ quỹ cập nhật theo khi sửa');
+r = await rpc(staff, 'save_expense', { p: { name: 'x', amount: 1 } });
+ok(r.error?.includes('không có quyền'), 'Nhân viên không ghi được chi tiêu');
+r = await rpc(owner, 'save_expense', { p: { name: '', amount: 1000 } });
+ok(r.error?.includes('tên khoản chi'), 'Bắt buộc có tên khoản chi');
+r = await rpc(owner, 'delete_expense', { p_id: exId });
+ok(!r.error, 'Xóa khoản chi');
+({ data: ct } = await owner.from('cash_transactions').select('id').eq('id', ex.cash_txn_id));
+ok(ct.length === 0, 'Dòng sổ quỹ bị xóa theo');
+const { data: lg } = await owner.from('audit_logs').select('action').eq('record_id', exId);
+ok(lg.some(x => x.action === 'delete_expense'), 'Nhật ký giữ lại khoản chi đã xóa');
+
+console.log('\n10. Doanh thu & lợi nhuận theo ngày');
+const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
+const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+r = await rpc(owner, 'daily_report', { p_from: iso, p_to: iso });
+const { data: pr2 } = await owner.rpc('profit_report', { p_from: iso, p_to: iso });
+eq(r.data[0].revenue, pr2.revenue, 'Doanh thu ngày khớp');
+eq(r.data[0].profit, Number(pr2.revenue) - Number(pr2.cogs), 'Lợi nhuận ngày = doanh thu − vốn');
+r = await rpc(staff, 'daily_report', { p_from: iso, p_to: iso });
+ok(r.error?.includes('không có quyền'), 'Nhân viên không xem được lợi nhuận ngày');
+
 console.log(`\nKẾT QUẢ: ${pass} đạt, ${fail} lỗi`);
 process.exit(fail ? 1 : 0);
