@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase, rpc, q } from '../lib/supabase.js';
-import { ROLE } from '../lib/format.js';
+import { ROLE, datetime } from '../lib/format.js';
+import { downloadBackup } from '../lib/backup.js';
 import { Card, Button, Input, Select, Field, Loading, ErrorBox, useLoad, useToast, Badge } from '../components/ui.jsx';
 
 export default function Settings({ profile }) {
@@ -39,6 +40,7 @@ export default function Settings({ profile }) {
           </div>))}
         <p className="text-xs text-slate-500 mt-3">Tạo tài khoản mới: Supabase → Authentication → Users → Add user. Tài khoản mới mặc định là Nhân viên, đổi quyền tại đây.</p>
       </Card>}
+      {owner && <BackupCard />}
       <ChangePassword />
       <Card title="Quyền của từng vai trò" icon="🔐" accent="from-amber-500 to-lime-500" className="lg:col-span-2">
         <ul className="text-sm space-y-1 list-disc pl-5">
@@ -71,6 +73,32 @@ function ChangePassword() {
         <Field label="Nhập lại"><Input type="password" autoComplete="new-password" value={b} onChange={e => setB(e.target.value)} /></Field>
         <Button color="rose" onClick={save} disabled={busy || !a}>🔑 Đổi mật khẩu</Button>
       </div>
+    </Card>
+  );
+}
+
+function BackupCard() {
+  const toast = useToast();
+  const st = useLoad(() => rpc('backup_status', {}), []);
+  const [busy, setBusy] = useState(false); const [last, setLast] = useState(null);
+  const run = async () => {
+    setBusy(true);
+    try { const r = await downloadBackup(); setLast(r); toast('Đã xuất sao lưu ' + r.name); st.reload(); }
+    catch (e) { toast(e.message, 'err'); }
+    setBusy(false);
+  };
+  const days = st.data?.days_since;
+  return (
+    <Card title="Sao lưu dữ liệu" icon="💾" accent="from-sky-600 to-indigo-500" className="lg:col-span-2">
+      <p className="text-sm">Tải <b>toàn bộ dữ liệu</b> (sản phẩm, kho, lô hàng, hóa đơn, công nợ, sổ quỹ, chi tiêu, nhật ký) về máy thành 1 file. Cất file vào Google Drive, Zalo "Cloud của tôi" hoặc máy tính.</p>
+      <div className="mt-3 rounded-2xl bg-sky-50 p-3 text-sm">
+        {st.loading ? 'Đang kiểm tra…' : st.data?.last_backup_at
+          ? <>Lần sao lưu gần nhất: <b>{datetime(st.data.last_backup_at)}</b>{days > 0 && <> ({days} ngày trước)</>}</>
+          : <b className="text-rose-600">Chưa sao lưu lần nào.</b>}
+      </div>
+      <Button color="sky" className="w-full mt-3" onClick={run} disabled={busy}>{busy ? 'Đang chuẩn bị file…' : '💾 Xuất sao lưu'}</Button>
+      {last && <p className="text-xs text-slate-600 mt-2">✅ {last.name} · {Math.max(1, Math.round(last.size / 1024))} KB · {last.counts.sales_invoices} hóa đơn, {last.counts.products} sản phẩm, {last.counts.expenses} khoản chi.</p>}
+      <p className="text-xs text-slate-500 mt-2">Nên sao lưu ít nhất mỗi tuần. Gói Supabase miễn phí không tự sao lưu; app sẽ nhắc trên Tổng quan khi quá 7 ngày chưa sao lưu. File chứa toàn bộ dữ liệu kinh doanh, hãy giữ kín.</p>
     </Card>
   );
 }

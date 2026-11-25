@@ -205,5 +205,29 @@ eq(rp3.expenses, rp2.expenses, 'Chi nhập hàng KHÔNG bị tính trùng vào c
 r = await rpc(staff, 'real_profit_report', { p_from: day, p_to: day });
 ok(r.error?.includes('không có quyền'), 'Nhân viên không xem được lợi nhuận thực');
 
+
+console.log('\n13. Xuất sao lưu');
+let bs = (await owner.rpc('backup_status')).data;
+ok(bs.last_backup_at === null && bs.has_data === true, 'Chưa sao lưu lần nào → app biết để nhắc');
+const bk = await owner.rpc('export_backup');
+ok(!bk.error, 'Chủ xuất được sao lưu ' + (bk.error?.message || ''));
+const T = bk.data.tables;
+ok(bk.data.meta.format === 'bangao-backup-v1' && Object.keys(T).length === 31, 'Đủ 31 bảng trong file sao lưu');
+const realInv = (await owner.from('sales_invoices').select('id', { count: 'exact', head: true })).count;
+eq(T.sales_invoices.length, realInv, 'Số hóa đơn trong sao lưu = số hóa đơn thật');
+ok(T.products.every(p => 'cost_price' in p), 'Sao lưu có cả giá nhập (cột ẩn với nhân viên)');
+ok(T.sales_item_costs.length > 0 && T.expenses.length > 0 && T.inventory_lots.length > 0, 'Có vốn, chi tiêu, lô hàng');
+bs = (await owner.rpc('backup_status')).data;
+ok(bs.last_backup_at !== null && bs.days_since === 0, 'Ghi nhận lần sao lưu hôm nay');
+r = await rpc(staff, 'export_backup', {});
+ok(r.error?.includes('không có quyền'), 'Nhân viên không xuất được sao lưu');
+const bsS = (await staff.rpc('backup_status')).data;
+ok(bsS === null, 'Nhân viên không thấy trạng thái sao lưu');
+const mgrUser = await user('ql@test.vn', 'Quản lý B');
+const { data: allP } = await owner.from('profiles').select('id,email');
+await owner.rpc('set_user_role', { p_user: allP.find(x => x.email === 'ql@test.vn').id, p_role: 'manager', p_active: true });
+r = await rpc(mgrUser, 'export_backup', {});
+ok(r.error?.includes('không có quyền'), 'Quản lý cũng không xuất được (chỉ chủ)');
+
 console.log(`\nKẾT QUẢ: ${pass} đạt, ${fail} lỗi`);
 process.exit(fail ? 1 : 0);

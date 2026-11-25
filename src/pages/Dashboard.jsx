@@ -24,6 +24,7 @@ export default function Dashboard({ go, profile }) {
   const { data: d, loading, error } = useLoad(async () => {
     const s = await rpc('dashboard_summary', {});
     if (s.can_see_profit) s.real = (await rpc('real_profit_report', { p_from: s.day, p_to: s.day }))[0];
+    if (profile.role === 'owner') s.backup = await rpc('backup_status', {}).catch(() => null);
     return s;
   }, []);
   if (loading) return <Loading />;
@@ -35,6 +36,12 @@ export default function Dashboard({ go, profile }) {
   ].filter(q => !q[4] || profile.role !== 'staff');
   return (
     <div className="space-y-4">
+      {d.backup?.has_data && (d.backup.last_backup_at === null || d.backup.days_since >= 7) && (
+        <button onClick={() => go('settings')} className="w-full text-left rounded-2xl p-3 bg-gradient-to-r from-sky-600 to-indigo-500 text-white font-semibold shadow-soft flex items-center gap-3">
+          <span className="text-2xl floaty">💾</span>
+          <span className="flex-1">{d.backup.last_backup_at === null ? 'Bạn chưa sao lưu dữ liệu lần nào.' : `Đã ${d.backup.days_since} ngày chưa sao lưu dữ liệu.`} Bấm để xuất sao lưu ngay.</span>
+          <span>›</span>
+        </button>)}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
         {quick.map(([i, t, p, g]) => (
           <button key={t} onClick={() => go(p)} className={cx('rounded-2xl p-3 text-white font-bold text-[13px] shadow-soft bg-gradient-to-br active:scale-95 transition', g)}>
