@@ -52,7 +52,7 @@ export const Select = ({ children, ...p }) => <select {...p} className={cx(input
 export function CountUp({ value, format = String, ms = 900 }) {
   const [v, setV] = useState(0);
   useEffect(() => {
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) { setV(value); return; }
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('motion-off')) { setV(value); return; }
     let raf, t0;
     const step = t => { t0 ??= t; const k = Math.min(1, (t - t0) / ms); setV(value * (1 - Math.pow(1 - k, 3))); if (k < 1) raf = requestAnimationFrame(step); };
     raf = requestAnimationFrame(step); return () => cancelAnimationFrame(raf);
