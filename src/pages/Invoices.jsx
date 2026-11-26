@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { supabase, rpc, q } from '../lib/supabase.js';
 import { money, num, datetime, isoDay } from '../lib/format.js';
-import { Card, Button, Input, Modal, Badge, Empty, Loading, ErrorBox, useLoad, useToast, Table, Field, Select, DeleteButton } from '../components/ui.jsx';
+import { cx, Card, Button, Input, Modal, Badge, Empty, Loading, ErrorBox, useLoad, useToast, Table, Field, Select, DeleteButton, useSelection, BulkBar, Check } from '../components/ui.jsx';
+import { downloadXlsx } from '../lib/excel.js';
 import PrintInvoice from '../components/Print.jsx';
 
 export default function Invoices({ profile }) {
@@ -20,9 +21,24 @@ export default function Invoices({ profile }) {
   }, [from, to, st]);
   const rows = (list.data || []).filter(i => !s || i.invoice_code.toLowerCase().includes(s.toLowerCase()) || i.customer_name.toLowerCase().includes(s.toLowerCase()));
   const ok = rows.filter(i => i.status === 'completed');
+  const sel = useSelection();
+  const toast = useToast();
+  const exportXlsx = async () => {
+    try {
+      const ids = rows.map(i => i.id); const items = [];
+      for (let k = 0; k < ids.length; k += 150) items.push(...await q(supabase.from('sales_invoice_items').select('*').in('invoice_id', ids.slice(k, k + 150)).order('line_no')));
+      const code = Object.fromEntries(rows.map(i => [i.id, i]));
+      const n = await downloadXlsx(`bonbien-hoadon-${from}-den-${to}`, [
+        { name: 'Hóa đơn', head: ['Mã HĐ', 'Ngày', 'Khách', 'Trạng thái', 'Tạm tính', 'Giảm giá', 'Tổng', 'Đã trả lúc mua', 'Còn nợ', 'Ghi chú'],
+          rows: rows.map(i => [i.invoice_code, datetime(i.invoice_date), i.customer_name, i.status === 'cancelled' ? 'Đã hủy' : 'Hoàn thành', +i.subtotal, +i.discount, +i.total_amount, +i.paid_amount, +i.debt_remaining, i.note || '']) },
+        { name: 'Chi tiết hàng', head: ['Mã HĐ', 'Ngày', 'Mã hàng', 'Tên hàng', 'Số lượng', 'Đơn vị', 'Quy ra bao', 'Đơn giá', 'Giảm', 'Thành tiền'],
+          rows: items.map(it => [code[it.invoice_id]?.invoice_code, datetime(code[it.invoice_id]?.invoice_date), it.product_code, it.product_name, +it.quantity, it.unit_name, +it.base_qty, +it.unit_price, +it.discount, +it.line_total]) }]);
+      if (n) toast('Đã xuất ' + n);
+    } catch (e) { toast(e.message, 'err'); }
+  };
   return (
     <div className="space-y-4">
-      <Card title="Tra cứu hóa đơn" icon="🔎" accent="from-teal-500 to-emerald-400">
+      <Card title="Tra cứu hóa đơn" icon="🔎" accent="from-teal-500 to-emerald-400" right={rows.length > 0 && <Button small color="ghost" onClick={exportXlsx}>📊 Excel</Button>}>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <Field label="Từ ngày"><Input type="date" value={from} onChange={e => setFrom(e.target.value)} /></Field>
           <Field label="Đến ngày"><Input type="date" value={to} onChange={e => setTo(e.target.value)} /></Field>
@@ -34,12 +50,15 @@ export default function Invoices({ profile }) {
           <Badge>{ok.length} hóa đơn</Badge><Badge color="bg-lua-100 text-lua-700">Doanh thu {money(ok.reduce((a, i) => a + Number(i.total_amount), 0))}</Badge>
           <Badge color="bg-rose-100 text-rose-700">Còn nợ {money(ok.reduce((a, i) => a + Number(i.debt_remaining), 0))}</Badge>
         </div>
+        {profile.role === 'owner' && <BulkBar s={sel} kind="invoice" noun="hóa đơn" className="mt-3" onDone={list.reload}
+          items={rows.map(i => ({ id: i.id, label: `${i.invoice_code} · ${i.customer_name} · ${money(i.total_amount)}${i.status === 'cancelled' ? ' (đã hủy)' : ''}` }))} />}
       </Card>
       <Card bodyClass="p-0 sm:p-4">
         {list.loading ? <Loading /> : list.error ? <ErrorBox error={list.error} /> : !rows.length ? <Empty text="Không có hóa đơn" /> : (
           <div className="divide-y">
             {rows.map(i => (
-              <button key={i.id} onClick={() => setOpen(i.id)} className="w-full text-left flex items-center gap-3 px-4 py-3 hover:bg-ruong-50">
+              <button key={i.id} onClick={() => sel.on ? sel.toggle(i.id) : setOpen(i.id)} className={cx('w-full text-left flex items-center gap-3 px-4 py-3', sel.has(i.id) ? 'bg-rose-50' : 'hover:bg-ruong-50')}>
+                {sel.on && <Check checked={sel.has(i.id)} />}
                 <span className="text-2xl">{i.status === 'cancelled' ? '🚫' : i.debt_remaining > 0 ? '📒' : '🧾'}</span>
                 <div className="flex-1 min-w-0"><div className="font-bold">{i.invoice_code} · {i.customer_name}</div>
                   <div className="text-xs text-slate-500">{datetime(i.invoice_date)}</div></div>

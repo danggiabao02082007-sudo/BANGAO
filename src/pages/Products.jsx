@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase, rpc, q } from '../lib/supabase.js';
 import { money, num, datetime, digits } from '../lib/format.js';
-import { Card, Button, Input, Select, Modal, Badge, Empty, Loading, ErrorBox, useLoad, useToast, Field, cx, DeleteButton } from '../components/ui.jsx';
+import { Card, Button, Input, Select, Modal, Badge, Empty, Loading, ErrorBox, useLoad, useToast, Field, cx, DeleteButton, useSelection, BulkBar, Check } from '../components/ui.jsx';
 
 const TXN = { purchase: ['Nhập hàng', 'text-ruong-700'], sale: ['Bán', 'text-rose-600'], sale_cancel: ['Hủy HĐ (nhập lại)', 'text-sky-700'],
   adjust_in: ['Điều chỉnh tăng', 'text-ruong-700'], adjust_out: ['Điều chỉnh giảm', 'text-orange-600'] };
@@ -12,6 +12,7 @@ export default function Products({ profile }) {
   const [s, setS] = useState(''); const [cat, setCat] = useState('');
   const [edit, setEdit] = useState(null); const [view, setView] = useState(null);
   const list = useLoad(() => q(supabase.from('v_products').select('*').order('name')), []);
+  const owner = profile.role === 'owner'; const sel = useSelection();
   const rows = (list.data || []).filter(p => (!cat || p.category_name === cat) && (!s || [p.name, p.product_code, p.barcode || ''].some(x => x.toLowerCase().includes(s.toLowerCase()))));
   const tabs = [['list', '🍚 Sản phẩm & tồn'], ['history', '📜 Lịch sử kho'], ...(mgr ? [['check', '⚖️ Đối soát']] : [])];
   return (
@@ -26,14 +27,17 @@ export default function Products({ profile }) {
             <Input value={s} onChange={e => setS(e.target.value)} placeholder="🔎 Tên, mã, mã vạch" />
             <Select value={cat} onChange={e => setCat(e.target.value)} className="!w-32"><option value="">Mọi nhóm</option><option>Gạo</option><option>Lúa</option><option>Cám</option></Select>
           </div>
+          {owner && <BulkBar s={sel} kind="product" noun="sản phẩm" className="mt-3" onDone={list.reload}
+            items={rows.map(p => ({ id: p.id, label: `${p.product_code} · ${p.name}` }))} />}
         </Card>
         {list.loading ? <Loading /> : list.error ? <ErrorBox error={list.error} /> : !rows.length ? <Card><Empty text={mgr ? 'Chưa có sản phẩm, bấm “＋ Thêm”' : 'Chưa có sản phẩm'} /></Card> : (
           <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
             {rows.map(p => {
               const low = Number(p.stock_bao) <= Number(p.min_stock); const bao = p.units.find(u => u.unit_code === 'bao'); const kg = p.units.find(u => u.unit_code === 'kg');
               return (
-                <button key={p.id} onClick={() => setView(p)} className={cx('text-left rounded-3xl bg-white/95 shadow-soft p-4 ring-2', low ? 'ring-rose-300' : 'ring-transparent', !p.is_active && 'opacity-60')}>
+                <button key={p.id} onClick={() => sel.on ? sel.toggle(p.id) : setView(p)} className={cx('text-left rounded-3xl bg-white/95 shadow-soft p-4 ring-2', sel.has(p.id) ? 'ring-rose-400' : low ? 'ring-rose-300' : 'ring-transparent', !p.is_active && 'opacity-60')}>
                   <div className="flex gap-3 items-start">
+                    {sel.on && <Check checked={sel.has(p.id)} />}
                     <span className="text-3xl w-12 h-12 rounded-2xl bg-gradient-to-br from-lua-200 to-ruong-200 grid place-items-center">{p.emoji}</span>
                     <div className="flex-1 min-w-0"><div className="font-extrabold">{p.name}</div>
                       <div className="text-xs text-slate-500">{p.product_code} · {p.category_name} · bao {num(p.kg_per_bao, 1)} kg</div>

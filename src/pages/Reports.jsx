@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { rpc } from '../lib/supabase.js';
 import { money, date, isoDay, num } from '../lib/format.js';
-import { Card, Input, Loading, ErrorBox, useLoad, cx } from '../components/ui.jsx';
+import { Card, Input, Loading, ErrorBox, useLoad, cx, Button, useToast } from '../components/ui.jsx';
+import { downloadXlsx } from '../lib/excel.js';
+const N = v => Math.round(Number(v || 0) * 1000) / 1000;
+
 
 const shift = (d, n) => { const x = new Date(d + 'T12:00:00'); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
 const lastDay = d => { const [y, m] = d.split('-').map(Number); return `${d.slice(0, 8)}${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`; };
@@ -16,6 +19,17 @@ export default function Reports() {
   const sel0 = month.data?.find(r => r.day === day) || { revenue: 0, cost: 0, expenses: 0, gross_profit: 0, real_profit: 0, invoices: 0 };
   const sel = { ...sel0, profit: sel0.gross_profit };
   const sum = k => (month.data || []).reduce((a, r) => a + Number(r[k]), 0);
+  const toast = useToast();
+  const exportXlsx = async () => {
+    try {
+      const rows = (month.data || []).map(r => [date(r.day), N(r.invoices), N(r.revenue), N(r.cost), N(r.expenses), N(r.gross_profit), N(r.real_profit)]);
+      rows.push(['TỔNG THÁNG', sum('invoices'), sum('revenue'), sum('cost'), sum('expenses'), sum('gross_profit'), sum('real_profit')]);
+      const det = (detail.data || []).map(r => [r.product_code, r.product_name, N(r.kg_sold), N(r.cost_per_kg), N(r.cost), N(r.revenue), N(r.revenue) - N(r.cost)]);
+      const sheets = [{ name: `Tháng ${day.slice(5, 7)}-${day.slice(0, 4)}`, head: ['Ngày', 'Số hóa đơn', 'Doanh thu', 'Vốn', 'Chi tiêu', 'Lợi nhuận (DT − vốn)', 'Lợi nhuận thực (DT − vốn − chi)'], rows }];
+      if (det.length) sheets.push({ name: `Vốn ngày ${day.slice(8, 10)}-${day.slice(5, 7)}`, head: ['Mã hàng', 'Tên hàng', 'Kg bán', 'Giá nhập/kg', 'Vốn', 'Doanh thu', 'Lợi nhuận'], rows: det });
+      const n = await downloadXlsx(`bonbien-loinhuan-${day.slice(0, 7)}`, sheets); if (n) toast('Đã xuất ' + n);
+    } catch (e) { toast(e.message, 'err'); }
+  };
   const max = Math.max(1, ...(month.data || []).map(r => Number(r.revenue)));
 
   return (
@@ -76,7 +90,8 @@ export default function Reports() {
           </>}
         </Card>
 
-        <Card title={`Lợi nhuận theo ngày · tháng ${day.slice(5, 7)}/${day.slice(0, 4)}`} icon="📈" accent="from-ruong-600 to-teal-500" bodyClass="p-0">
+        <Card title={`Lợi nhuận theo ngày · tháng ${day.slice(5, 7)}/${day.slice(0, 4)}`} icon="📈" accent="from-ruong-600 to-teal-500" bodyClass="p-0"
+          right={<Button small color="ghost" onClick={exportXlsx}>📊 Xuất Excel</Button>}>
           <div className="grid grid-cols-2 gap-2 p-4">
             <div className="rounded-2xl bg-lua-50 p-3"><div className="text-xs font-semibold">Tổng doanh thu tháng</div><b className="text-lg text-lua-700">{money(sum('revenue'))}</b></div>
             <div className="rounded-2xl bg-ruong-50 p-3"><div className="text-xs font-semibold">Tổng lợi nhuận tháng</div><b className="text-lg text-ruong-700">{money(sum('gross_profit'))}</b>

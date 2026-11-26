@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase, rpc, q } from '../lib/supabase.js';
 import { money, num, datetime, digits } from '../lib/format.js';
-import { Card, Button, Input, Select, Field, Empty, Loading, ErrorBox, useLoad, useToast, DeleteButton } from '../components/ui.jsx';
+import { Card, Button, Input, Select, Field, Empty, Loading, ErrorBox, useLoad, useToast, DeleteButton, useSelection, BulkBar, Check, cx } from '../components/ui.jsx';
 
 export default function Purchase({ profile }) {
   const toast = useToast();
@@ -9,6 +9,7 @@ export default function Purchase({ profile }) {
   const sups = useLoad(() => q(supabase.from('suppliers').select('id,name').eq('is_active', true).order('name')), []);
   const hist = useLoad(() => q(supabase.from('purchase_receipts').select('*, suppliers(name)').order('receipt_date', { ascending: false }).limit(30)), []);
   const [sup, setSup] = useState(''); const [lines, setLines] = useState([]); const [paid, setPaid] = useState(null); const [acc, setAcc] = useState('cash'); const [note, setNote] = useState(''); const [busy, setBusy] = useState(false);
+  const sel = useSelection(); const owner = profile?.role === 'owner';
   const addLine = () => setLines(l => [...l, { key: Math.random(), product_id: prods.data[0]?.id || '', unit_code: 'bao', qty: '', price: '' }]);
   const upd = (k, patch) => setLines(l => l.map(x => x.key === k ? { ...x, ...patch } : x));
   const calc = lines.map(l => { const p = prods.data?.find(x => x.id === l.product_id); const u = p?.units.find(x => x.unit_code === l.unit_code);
@@ -67,10 +68,13 @@ export default function Purchase({ profile }) {
         <Button className="w-full mt-4" color="sky" onClick={save} disabled={busy || !calc.length}>💾 Lưu phiếu nhập</Button>
       </Card>
       <Card title="Phiếu nhập gần đây" icon="📜" accent="from-sky-600 to-indigo-500" className="lg:col-span-2">
+        {owner && hist.data && <BulkBar s={sel} kind="receipt" noun="phiếu nhập" className="mb-2" onDone={() => { hist.reload(); prods.reload(); }}
+          items={hist.data.map(r => ({ id: r.id, label: `${r.receipt_code} · ${r.suppliers?.name || 'Không NCC'} · ${money(r.total_amount)}` }))} />}
         {hist.loading ? <Loading /> : hist.error ? <ErrorBox error={hist.error} /> : hist.data.length ? hist.data.map(r => (
-          <div key={r.id} className="flex justify-between items-center gap-2 text-sm py-2 border-b"><span className="flex-1"><b>{r.receipt_code}</b> · {datetime(r.receipt_date)} · {r.suppliers?.name || 'Không NCC'}</span>
+          <div key={r.id} onClick={() => sel.on && sel.toggle(r.id)} className={cx('flex justify-between items-center gap-2 text-sm py-2 border-b', sel.on && 'cursor-pointer', sel.has(r.id) && 'bg-rose-50')}>
+            {sel.on && <Check checked={sel.has(r.id)} />}<span className="flex-1"><b>{r.receipt_code}</b> · {datetime(r.receipt_date)} · {r.suppliers?.name || 'Không NCC'}</span>
             <span><b>{money(r.total_amount)}</b>{r.debt_remaining > 0 && <span className="text-rose-600"> · nợ {money(r.debt_remaining)}</span>}</span>
-            {profile?.role === 'owner' && <DeleteButton icon title={`Xóa phiếu nhập ${r.receipt_code}?`}
+            {owner && !sel.on && <DeleteButton icon title={`Xóa phiếu nhập ${r.receipt_code}?`}
               onConfirm={async () => { await rpc('delete_purchase_receipt', { p_id: r.id }); toast(`Đã xóa phiếu ${r.receipt_code}, kho đã trừ lại`); hist.reload(); prods.reload(); }}>
               <p><b>{r.receipt_code}</b> · {r.suppliers?.name || 'Không NCC'} · {money(r.total_amount)}</p>
               <p>Hàng của phiếu bị trừ khỏi kho, khoản chi nhập hàng bị gỡ khỏi sổ quỹ, nợ nhà cung cấp của phiếu bị gỡ.</p>

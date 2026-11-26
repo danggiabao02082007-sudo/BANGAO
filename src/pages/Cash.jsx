@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { supabase, rpc, q } from '../lib/supabase.js';
 import { money, datetime, digits, isoDay } from '../lib/format.js';
-import { Card, Button, Input, Select, Field, Empty, Loading, ErrorBox, useLoad, useToast, Badge, cx, DeleteButton } from '../components/ui.jsx';
+import { Card, Button, Input, Select, Field, Empty, Loading, ErrorBox, useLoad, useToast, Badge, cx, DeleteButton, useSelection, BulkBar, Check } from '../components/ui.jsx';
+
+import { downloadXlsx } from '../lib/excel.js';
 
 export default function Cash({ profile }) {
   const toast = useToast();
@@ -15,6 +17,13 @@ export default function Cash({ profile }) {
   const save = async () => {
     try { await rpc('record_cash', { p_direction: f.direction, p_category: f.category, p_amount: Number(f.amount), p_account: f.account, p_party: f.party, p_note: f.note });
       toast('Đã ghi sổ quỹ'); setF({ ...f, amount: '', party: '', note: '' }); rows.reload(); } catch (e) { toast(e.message, 'err'); }
+  };
+  const sel = useSelection(); const owner = profile?.role === 'owner';
+  const exportXlsx = async () => {
+    try { const n = await downloadXlsx(`bonbien-soquy-${from}-den-${to}`, [{ name: 'Sổ quỹ', head: ['Ngày giờ', 'Loại', 'Quỹ', 'Thu', 'Chi', 'Đối tượng', 'Ghi chú'],
+      rows: [...rows.data.map(r => [datetime(r.txn_date), name[r.category] || r.category, r.cash_accounts?.name || '', r.direction === 'in' ? +r.amount : null, r.direction === 'out' ? +r.amount : null, r.party_name || '', r.note || '']),
+        ['TỔNG', '', '', tin, tout, 'Chênh lệch', tin - tout]] }]); if (n) toast('Đã xuất ' + n); }
+    catch (e) { toast(e.message, 'err'); }
   };
   const tin = (rows.data || []).filter(r => r.direction === 'in').reduce((a, r) => a + Number(r.amount), 0);
   const tout = (rows.data || []).filter(r => r.direction === 'out').reduce((a, r) => a + Number(r.amount), 0);
@@ -35,16 +44,19 @@ export default function Cash({ profile }) {
         <p className="text-xs text-slate-500 mt-2">Thu bán hàng, thu nợ, chi nhập hàng được ghi tự động. Các khoản chi (điện, nước, vận chuyển…) ghi ở mục <b>💸 Chi tiêu</b> và tự hiện trong sổ quỹ.</p>
         <p className="text-xs text-slate-500 mt-1">Nút 🗑️ chỉ có ở khoản ghi tay. Khoản tự động thì xóa từ hóa đơn/phiếu gốc, khoản chi thì xóa ở mục Chi tiêu.</p>
       </Card>
-      <Card title="Sổ quỹ" icon="📒" accent="from-purple-500 to-pink-500">
+      <Card title="Sổ quỹ" icon="📒" accent="from-purple-500 to-pink-500" right={rows.data?.length > 0 && <Button small color="ghost" onClick={exportXlsx}>📊 Excel</Button>}>
         <div className="grid grid-cols-2 gap-2"><Field label="Từ ngày"><Input type="date" value={from} onChange={e => setFrom(e.target.value)} /></Field>
           <Field label="Đến ngày"><Input type="date" value={to} onChange={e => setTo(e.target.value)} /></Field></div>
         <div className="flex flex-wrap gap-2 my-3"><Badge>Thu {money(tin)}</Badge><Badge color="bg-rose-100 text-rose-700">Chi {money(tout)}</Badge>
           <Badge color="bg-violet-100 text-violet-700">Chênh lệch {money(tin - tout)}</Badge></div>
+        {owner && rows.data && <BulkBar s={sel} kind="cash" noun="khoản ghi tay" className="mb-2" onDone={rows.reload}
+          items={rows.data.filter(r => !r.ref_table).map(r => ({ id: r.id, label: `${name[r.category] || r.category} · ${money(r.amount)} · ${datetime(r.txn_date)}` }))} />}
         {rows.loading ? <Loading /> : rows.error ? <ErrorBox error={rows.error} /> : rows.data.length ? rows.data.map(r => (
-          <div key={r.id} className="flex justify-between items-center gap-2 py-2 border-b text-sm">
+          <div key={r.id} onClick={() => sel.on && !r.ref_table && sel.toggle(r.id)} className={cx('flex justify-between items-center gap-2 py-2 border-b text-sm', sel.on && !r.ref_table && 'cursor-pointer', sel.has(r.id) && 'bg-rose-50')}>
+            {sel.on && (r.ref_table ? <span className="w-6" /> : <Check checked={sel.has(r.id)} />)}
             <span className="flex-1">{datetime(r.txn_date)} · <b>{name[r.category]}</b> · {r.cash_accounts?.name}<div className="text-xs text-slate-500">{r.party_name} {r.note}</div></span>
             <b className={r.direction === 'in' ? 'text-ruong-700' : 'text-rose-600'}>{r.direction === 'in' ? '+' : '−'}{money(r.amount)}</b>
-            {profile?.role === 'owner' && !r.ref_table && <DeleteButton icon title="Xóa khoản thu/chi này?"
+            {owner && !sel.on && !r.ref_table && <DeleteButton icon title="Xóa khoản thu/chi này?"
               onConfirm={async () => { await rpc('delete_cash_entry', { p_id: r.id }); toast('Đã xóa khỏi sổ quỹ'); rows.reload(); }}>
               <p><b>{name[r.category]}</b> · {money(r.amount)} · {datetime(r.txn_date)}</p><p>{r.party_name} {r.note}</p>
             </DeleteButton>}</div>)) : <Empty text="Không có giao dịch" />}

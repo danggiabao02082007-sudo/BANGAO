@@ -1,4 +1,5 @@
 import { useEffect, useState, createContext, useContext, useCallback } from 'react';
+import { rpc } from '../lib/supabase.js';
 
 export const cx = (...a) => a.filter(Boolean).join(' ');
 
@@ -154,6 +155,68 @@ export function DeleteButton({ title, children, onConfirm, label = '🗑️ Xóa
       <p className="text-xs text-rose-600 font-semibold mt-2">Không hoàn tác được. Nội dung bị xóa vẫn được lưu trong nhật ký hệ thống.</p>
       <div className="flex gap-2 mt-4"><Button type="button" color="ghost" className="flex-1" onClick={() => setOpen(false)} disabled={busy}>Không xóa</Button>
         <Button type="button" color="rose" className="flex-1" onClick={go} disabled={busy}>{busy ? 'Đang xóa…' : '🗑️ Xóa'}</Button></div>
+    </Modal>}
+  </>);
+}
+
+// ---------- Chọn nhiều để xóa ----------
+export function useSelection() {
+  const [on, setOnRaw] = useState(false); const [sel, setSel] = useState(() => new Set());
+  const clear = () => setSel(new Set());
+  return {
+    on, sel, clear, has: id => sel.has(id),
+    setOn: v => { setOnRaw(v); if (!v) clear(); },
+    toggle: id => setSel(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; }),
+    setAll: ids => setSel(new Set(ids)),
+  };
+}
+
+// Ô đánh dấu (chỉ để hiển thị; bấm vào cả dòng để chọn/bỏ chọn)
+export const Check = ({ checked }) => (
+  <span aria-hidden="true" className={cx('shrink-0 w-6 h-6 rounded-lg grid place-items-center text-white text-sm font-black ring-2 transition',
+    checked ? 'bg-rose-500 ring-rose-500' : 'bg-white ring-slate-300')}>{checked ? '✓' : ''}</span>
+);
+
+/** Thanh công cụ xóa nhiều. items = [{ id, label }] là các mục đang hiện (xóa được) trong danh sách. */
+export function BulkBar({ s, kind, items, noun = 'mục', onDone, className = '' }) {
+  const toast = useToast();
+  const [ask, setAsk] = useState(null); const [typed, setTyped] = useState(''); const [busy, setBusy] = useState(false); const [result, setResult] = useState(null);
+  const picked = items.filter(x => s.has(x.id));
+  const run = async () => {
+    setBusy(true);
+    try {
+      const r = await rpc('delete_many', { p_kind: kind, p_ids: ask.list.map(x => x.id) });
+      const name = Object.fromEntries(items.map(x => [x.id, x.label]));
+      setAsk(null); setTyped(''); s.setOn(false); onDone();
+      if (r.failed.length) setResult({ ...r, failed: r.failed.map(f => ({ ...f, label: name[f.id] || f.id })) });
+      else toast(`Đã xóa ${r.deleted} ${noun}`);
+    } catch (e) { toast(e.message, 'err'); }
+    setBusy(false);
+  };
+  if (!s.on) return items.length ? <Button small color="ghost" className={className} onClick={() => s.setOn(true)}>☑️ Chọn nhiều để xóa</Button> : null;
+  return (<>
+    <div className={cx('flex flex-wrap items-center gap-2 rounded-2xl bg-rose-50 ring-2 ring-rose-200 p-2', className)}>
+      <b className="text-sm text-rose-700 px-1">Đã chọn {picked.length}/{items.length}</b>
+      <Button small color="ghost" onClick={() => s.setAll(items.map(x => x.id))}>Chọn tất cả</Button>
+      {picked.length > 0 && <Button small color="ghost" onClick={s.clear}>Bỏ chọn</Button>}
+      <Button small color="rose" disabled={!picked.length} onClick={() => setAsk({ all: false, list: picked })}>🗑️ Xóa đã chọn ({picked.length})</Button>
+      <Button small color="danger" disabled={!items.length} onClick={() => setAsk({ all: true, list: items })}>🗑️ Xóa tất cả ({items.length})</Button>
+      <Button small color="ghost" onClick={() => s.setOn(false)}>Xong</Button>
+    </div>
+    {ask && <Modal title={ask.all ? `Xóa tất cả ${ask.list.length} ${noun} đang hiện?` : `Xóa ${ask.list.length} ${noun} đã chọn?`} onClose={() => !busy && setAsk(null)}>
+      <ul className="text-sm list-disc pl-5 max-h-48 overflow-auto">{ask.list.slice(0, 30).map(x => <li key={x.id}>{x.label}</li>)}
+        {ask.list.length > 30 && <li>… và {ask.list.length - 30} {noun} khác</li>}</ul>
+      <p className="text-sm mt-2">Mỗi {noun} được xóa và gỡ ảnh hưởng (kho, sổ quỹ, công nợ) giống như xóa từng cái. {noun[0].toUpperCase() + noun.slice(1)} nào đang bị phần khác dùng tới sẽ được bỏ qua và báo lại.</p>
+      {ask.all && <Field label='Gõ "XÓA" để xác nhận (không dấu cũng được)' className="mt-2"><Input value={typed} onChange={e => setTyped(e.target.value)} placeholder="XÓA" /></Field>}
+      <p className="text-xs text-rose-600 font-semibold mt-2">Không hoàn tác được. Nội dung bị xóa vẫn được lưu trong nhật ký hệ thống.</p>
+      <div className="flex gap-2 mt-4"><Button type="button" color="ghost" className="flex-1" onClick={() => setAsk(null)} disabled={busy}>Không xóa</Button>
+        <Button type="button" color="rose" className="flex-1" onClick={run} disabled={busy || (ask.all && !['XÓA', 'XOA'].includes(typed.normalize('NFC').trim().toUpperCase()))}>{busy ? 'Đang xóa…' : `🗑️ Xóa ${ask.list.length}`}</Button></div>
+    </Modal>}
+    {result && <Modal title="Kết quả xóa" onClose={() => setResult(null)}>
+      <p>✅ Đã xóa <b>{result.deleted}</b> {noun}.</p>
+      <p className="mt-2">⚠️ <b>{result.failed.length}</b> {noun} không xóa được:</p>
+      <ul className="text-sm list-disc pl-5 mt-1 max-h-60 overflow-auto">{result.failed.map(f => <li key={f.id}><b>{f.label}</b>: {f.error}</li>)}</ul>
+      <Button className="w-full mt-4" onClick={() => setResult(null)}>Đã hiểu</Button>
     </Modal>}
   </>);
 }

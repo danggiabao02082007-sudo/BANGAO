@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase, rpc, q } from '../lib/supabase.js';
 import { money, datetime, digits } from '../lib/format.js';
-import { Card, Button, Input, Select, Modal, Badge, Empty, Loading, ErrorBox, useLoad, useToast, Field, DeleteButton } from '../components/ui.jsx';
+import { Card, Button, Input, Select, Modal, Badge, Empty, Loading, ErrorBox, useLoad, useToast, Field, DeleteButton, useSelection, BulkBar, Check, cx } from '../components/ui.jsx';
 import { InvoiceDetail } from './Invoices.jsx';
 
 export function CustomerForm({ initial, onSaved }) {
@@ -37,6 +37,7 @@ export default function Customers({ profile }) {
   const [s, setS] = useState(''); const [onlyDebt, setOnlyDebt] = useState(false);
   const [edit, setEdit] = useState(null); const [view, setView] = useState(null);
   const list = useLoad(() => q(supabase.from('v_customers').select('*').eq('is_active', true).order('name')), []);
+  const sel = useSelection();
   const rows = (list.data || []).filter(c => (!onlyDebt || Number(c.debt) > 0) &&
     (!s || [c.name, c.phone, c.code].some(x => x.toLowerCase().includes(s.toLowerCase()))));
   return (
@@ -47,11 +48,14 @@ export default function Customers({ profile }) {
           <label className="flex items-center gap-1 text-sm font-semibold whitespace-nowrap"><input type="checkbox" checked={onlyDebt} onChange={e => setOnlyDebt(e.target.checked)} /> Còn nợ</label>
         </div>
         <div className="mt-2 text-sm"><Badge color="bg-rose-100 text-rose-700">Tổng nợ phải thu {money(rows.reduce((a, c) => a + Number(c.debt), 0))}</Badge></div>
+        {profile.role === 'owner' && <BulkBar s={sel} kind="customer" noun="khách hàng" className="mt-3" onDone={list.reload}
+          items={rows.map(c => ({ id: c.id, label: `${c.code} · ${c.name}` }))} />}
       </Card>
       <Card bodyClass="p-0">
         {list.loading ? <Loading /> : list.error ? <ErrorBox error={list.error} /> : !rows.length ? <Empty text="Chưa có khách hàng" /> : (
           <div className="divide-y">{rows.map(c => (
-            <button key={c.id} onClick={() => setView(c)} className="w-full text-left flex items-center gap-3 px-4 py-3 hover:bg-pink-50">
+            <button key={c.id} onClick={() => sel.on ? sel.toggle(c.id) : setView(c)} className={cx('w-full text-left flex items-center gap-3 px-4 py-3', sel.has(c.id) ? 'bg-rose-50' : 'hover:bg-pink-50')}>
+              {sel.on && <Check checked={sel.has(c.id)} />}
               <span className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-400 to-lua-400 grid place-items-center text-white font-bold">{c.name[0]}</span>
               <div className="flex-1 min-w-0"><div className="font-bold">{c.name} {c.customer_type === 'si' && <Badge color="bg-violet-100 text-violet-700">Sỉ</Badge>}</div>
                 <div className="text-xs text-slate-500">{c.code} · {c.phone || 'chưa có SĐT'} · đã mua {money(c.total_bought)}</div></div>
