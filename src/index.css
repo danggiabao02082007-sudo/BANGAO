@@ -73,7 +73,9 @@ html.motion-lite .bird, html.motion-lite .falling, html.motion-lite .dragonfly {
 html.motion-off *, html.motion-off *::before, html.motion-off *::after { animation: none !important; transition: none !important; }
 html.motion-off .bird, html.motion-off .falling, html.motion-off .dragonfly, html.motion-off .grain-burst { display: none; }
 
-/* Thanh cuộn mảnh cho giỏ hàng/thanh toán trên máy tính */
-.cart-scroll { scrollbar-width: thin; scrollbar-color: rgba(22,163,74,.45) transparent; }
-.cart-scroll::-webkit-scrollbar { width: 8px; }
-.cart-scroll::-webkit-scrollbar-thumb { background: rgba(22,163,74,.45); border-radius: 8px; }
+/* Thanh cuộn mảnh dùng chung: giỏ hàng/thanh toán, hộp chi tiết hóa đơn, thanh bên */
+.cart-scroll, .thin-scroll { scrollbar-width: thin; scrollbar-color: rgba(22,163,74,.45) transparent; }
+.cart-scroll::-webkit-scrollbar, .thin-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.cart-scroll::-webkit-scrollbar-thumb, .thin-scroll::-webkit-scrollbar-thumb { background: rgba(22,163,74,.45); border-radius: 8px; }
+/* Khóa cuộn trang nền khi có hộp thoại mở (thêm/bỏ lớp .scroll-lock trên <html>) */
+html.scroll-lock, html.scroll-lock body { overflow: hidden; }
