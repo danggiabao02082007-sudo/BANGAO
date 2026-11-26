@@ -3,6 +3,7 @@ import { supabase, rpc, q } from '../lib/supabase.js';
 import { ROLE, datetime } from '../lib/format.js';
 import { downloadBackup } from '../lib/backup.js';
 import { MODES, getMode, setMode, getEffective } from '../lib/motion.js';
+import { THEMES, getTheme, setTheme, effectiveTheme } from '../lib/theme.js';
 import { useEffect } from 'react';
 import { Card, Button, Input, Select, Field, Loading, ErrorBox, useLoad, useToast, Badge, Modal, cx } from '../components/ui.jsx';
 
@@ -45,6 +46,7 @@ export default function Settings({ profile }) {
       {owner && <BackupCard />}
       {owner && <ResetCard />}
       {owner && <RestoreCard />}
+      <ThemeCard />
       <MotionCard />
       <ChangePassword />
       <Card title="Quyền của từng vai trò" icon="🔐" accent="from-amber-500 to-lime-500" className="lg:col-span-2">
@@ -200,6 +202,24 @@ function RestoreCard() {
         <Button color="green" className="w-full mt-2" onClick={run} disabled={busy || !okRestore(typed)}>{busy ? 'Đang khôi phục…' : '♻️ Khôi phục'}</Button>
       </div>}
       {done && <p className="text-xs text-slate-600 mt-2">✅ Đã khôi phục {done.sales_invoices} hóa đơn, {done.purchase_receipts} phiếu nhập, {done.products} sản phẩm, {done.cash_transactions} dòng sổ quỹ, {done.expenses} khoản chi.</p>}
+    </Card>
+  );
+}
+
+// Chủ đề giao diện (nhớ riêng trên từng máy)
+function ThemeCard() {
+  const [t, setT] = useState(getTheme());
+  const pick = k => { setT(k); setTheme(k); };
+  const eff = effectiveTheme(t);
+  return (
+    <Card title="Chủ đề giao diện" icon="🎨" accent="from-red-600 to-emerald-600">
+      <div className="grid grid-cols-3 gap-2">
+        {THEMES.map(([k, n]) => (
+          <button key={k} onClick={() => pick(k)} aria-pressed={t === k}
+            className={'rounded-2xl py-3 px-2 font-bold text-sm ' + (t === k ? 'bg-gradient-to-r from-red-600 to-emerald-600 text-white shadow' : 'bg-slate-100')}>{n}</button>))}
+      </div>
+      <p className="text-sm mt-3">{THEMES.find(x => x[0] === t)[2]}.</p>
+      <p className="text-xs text-slate-500 mt-1">Đang hiện: <b>{eff === 'xmas' ? 'Giáng sinh 🎄' : 'Cánh đồng lúa 🌾'}</b>. Lựa chọn chỉ áp dụng cho máy này. Tuyết rơi và xe tuần lộc tắt theo mục “Hiệu ứng động”.</p>
     </Card>
   );
 }

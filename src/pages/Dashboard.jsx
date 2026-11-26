@@ -1,6 +1,7 @@
 import { rpc } from '../lib/supabase.js';
 import { money, num, date } from '../lib/format.js';
 import { Card, Stat, Loading, ErrorBox, Empty, useLoad, cx } from '../components/ui.jsx';
+import { effectiveTheme, daysToXmas } from '../lib/theme.js';
 
 const BAR = ['from-lua-400 to-orange-400', 'from-lime-400 to-ruong-500', 'from-sky-400 to-cyan-400', 'from-pink-400 to-rose-500', 'from-violet-400 to-fuchsia-500', 'from-amber-400 to-yellow-300', 'from-teal-400 to-emerald-500'];
 
@@ -34,8 +35,18 @@ export default function Dashboard({ go, profile }) {
     ['🍚', 'Thêm sản phẩm', 'products', 'from-lua-500 to-yellow-400', true], ['👨‍🌾', 'Thêm khách hàng', 'customers', 'from-pink-500 to-rose-400'],
     ['💵', 'Ghi thu', 'cash', 'from-emerald-500 to-teal-400', true], ['💸', 'Chi tiêu', 'expenses', 'from-orange-500 to-red-400', true]
   ].filter(q => !q[4] || profile.role !== 'staff');
+  const xd = effectiveTheme() === 'xmas' ? daysToXmas() : null;
   return (
     <div className="space-y-4">
+      {xd != null && (
+        <div className="card relative overflow-hidden rounded-3xl p-4 text-white shadow-soft bg-gradient-to-r from-red-600 via-rose-600 to-emerald-600 flex items-center gap-3">
+          <span className="text-4xl floaty">🎅</span>
+          <div className="flex-1">
+            <div className="text-lg font-extrabold">{xd === 0 ? 'Giáng sinh an lành! 🎄' : xd > 0 && xd <= 30 ? `Còn ${xd} ngày nữa là Giáng sinh 🎄` : 'Chúc mừng mùa lễ hội! 🎉'}</div>
+            <div className="text-sm opacity-95">Đại lý Bốn Biển chúc cả nhà buôn may bán đắt, gạo đầy kho, tiền đầy túi 🎁</div>
+          </div>
+          <span className="text-3xl hidden sm:block">🎁🦌🛷</span>
+        </div>)}
       {d.backup?.has_data && (d.backup.last_backup_at === null || d.backup.days_since >= 7) && (
         <button onClick={() => go('settings')} className="w-full text-left rounded-2xl p-3 bg-gradient-to-r from-sky-600 to-indigo-500 text-white font-semibold shadow-soft flex items-center gap-3">
           <span className="text-2xl floaty">💾</span>
@@ -44,7 +55,7 @@ export default function Dashboard({ go, profile }) {
         </button>)}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
         {quick.map(([i, t, p, g]) => (
-          <button key={t} onClick={() => go(p)} className={cx('rounded-2xl p-3 text-white font-bold text-[13px] shadow-soft bg-gradient-to-br active:scale-95 transition', g)}>
+          <button key={t} onClick={() => go(p)} className={cx('card relative overflow-hidden rounded-2xl p-3 text-white font-bold text-[13px] shadow-soft bg-gradient-to-br active:scale-95 transition', g)}>
             <div className="text-2xl">{i}</div>{t}
           </button>
         ))}

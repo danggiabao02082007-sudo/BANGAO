@@ -4,6 +4,8 @@ import './index.css';
 import App from './App.jsx';
 import { ToastHost } from './components/ui.jsx';
 import { initMotion } from './lib/motion.js';
+import { applyTheme } from './lib/theme.js';
 initMotion();
+applyTheme();
 createRoot(document.getElementById('root')).render(<ToastHost><App /></ToastHost>);
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});

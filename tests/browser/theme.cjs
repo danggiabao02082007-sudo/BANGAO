@@ -1,0 +1,35 @@
+// Chủ đề Giáng sinh / cánh đồng lúa: node tests/browser/theme.cjs <site> <ảnh>
+const { chromium } = require('playwright');
+const http = require('http'), fs = require('fs'), path = require('path');
+const [site, out] = process.argv.slice(2);
+const T = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
+const srv = http.createServer((q, r) => { let p = path.join(site, q.url.split('?')[0]); if (p.endsWith('/')) p += 'index.html';
+  fs.readFile(p, (e, d) => { if (e) { r.writeHead(404); r.end(); } else { r.writeHead(200, { 'content-type': T[path.extname(p)] || 'text/plain' }); r.end(d); } }); }).listen(8784);
+const res = []; const ok = (c, m) => { res.push([c, m]); console.log(c ? '  ✔' : '  ✘', m); };
+const U = 'http://localhost:8784/';
+(async () => {
+  const b = await chromium.launch(); const errs = [];
+  const p = await (await b.newContext({ viewport: { width: 1280, height: 800 } })).newPage();
+  p.on('pageerror', e => errs.push(e.message));
+  await p.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+  await p.addInitScript(() => { if (!sessionStorage.getItem('x')) { localStorage.setItem('bonbien.motion', 'full'); localStorage.setItem('bonbien.theme', 'xmas'); sessionStorage.setItem('x', '1'); } });
+  await p.goto(U); await p.fill('input[type=email]', 'chu@test.vn'); await p.fill('input[type=password]', 'Matkhau@123');
+  await p.click('button:has-text("Đăng nhập")'); await p.waitForSelector('text=Doanh thu hôm nay', { timeout: 15000 });
+  const isX = () => p.evaluate(() => document.documentElement.classList.contains('theme-xmas'));
+  ok(await isX() && await p.locator('.snowflake').count() > 20 && await p.locator('.sleigh-fly').count() === 1, 'Giáng sinh: có tuyết rơi, xe tuần lộc');
+  ok(await p.locator('text=/ngày nữa là Giáng sinh|Giáng sinh an lành|mùa lễ hội/').count() >= 1, 'Tổng quan có lời chúc Giáng sinh');
+  const cap = await p.locator('section.card').first().evaluate(e => getComputedStyle(e, '::before').backgroundImage);
+  ok(cap.includes('svg'), 'Thẻ được phủ tuyết');
+  await p.goto(U + '#settings'); await p.waitForSelector('text=Chủ đề giao diện');
+  await p.click('button:has-text("🌾 Cánh đồng lúa")'); await p.waitForTimeout(500);
+  ok(!(await isX()) && await p.locator('.snowflake').count() === 0, 'Chọn "Cánh đồng lúa": tắt tuyết, về giao diện thường');
+  await p.reload(); await p.waitForSelector('text=Chủ đề giao diện'); await p.waitForTimeout(500);
+  ok(!(await isX()), 'Tải lại vẫn nhớ "Cánh đồng lúa"');
+  await p.click('button:has-text("🎄 Giáng sinh")'); await p.waitForTimeout(500);
+  ok(await isX() && await p.locator('.snowflake').count() > 20, 'Chọn lại "Giáng sinh": bật ngay');
+  await p.screenshot({ path: `${out}/cai_dat_chu_de.png` });
+  await p.click('button:has-text("⏸️ Tắt")'); await p.waitForTimeout(400);
+  ok(await p.locator('.snowflake').first().evaluate(e => getComputedStyle(e).display) === 'none', 'Hiệu ứng động "Tắt": dừng tuyết rơi');
+  ok(errs.length === 0, 'Không có lỗi JavaScript ' + JSON.stringify(errs));
+  await b.close(); srv.close(); process.exit(res.every(x => x[0]) ? 0 : 1);
+})().catch(e => { console.error(e); process.exit(1); });
