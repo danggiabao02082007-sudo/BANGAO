@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { supabase, rpc, q } from '../lib/supabase.js';
 import { money, num, datetime, digits } from '../lib/format.js';
-import { Card, Button, Input, Select, Field, Empty, Loading, ErrorBox, useLoad, useToast } from '../components/ui.jsx';
+import { Card, Button, Input, Select, Field, Empty, Loading, ErrorBox, useLoad, useToast, DeleteButton } from '../components/ui.jsx';
 
-export default function Purchase() {
+export default function Purchase({ profile }) {
   const toast = useToast();
   const prods = useLoad(() => q(supabase.from('v_products').select('*').eq('is_active', true).order('name')), []);
   const sups = useLoad(() => q(supabase.from('suppliers').select('id,name').eq('is_active', true).order('name')), []);
@@ -68,8 +68,14 @@ export default function Purchase() {
       </Card>
       <Card title="Phiếu nhập gần đây" icon="📜" accent="from-sky-600 to-indigo-500" className="lg:col-span-2">
         {hist.loading ? <Loading /> : hist.error ? <ErrorBox error={hist.error} /> : hist.data.length ? hist.data.map(r => (
-          <div key={r.id} className="flex justify-between text-sm py-2 border-b"><span><b>{r.receipt_code}</b> · {datetime(r.receipt_date)} · {r.suppliers?.name || 'Không NCC'}</span>
-            <span><b>{money(r.total_amount)}</b>{r.debt_remaining > 0 && <span className="text-rose-600"> · nợ {money(r.debt_remaining)}</span>}</span></div>)) : <Empty text="Chưa có phiếu nhập" />}
+          <div key={r.id} className="flex justify-between items-center gap-2 text-sm py-2 border-b"><span className="flex-1"><b>{r.receipt_code}</b> · {datetime(r.receipt_date)} · {r.suppliers?.name || 'Không NCC'}</span>
+            <span><b>{money(r.total_amount)}</b>{r.debt_remaining > 0 && <span className="text-rose-600"> · nợ {money(r.debt_remaining)}</span>}</span>
+            {profile?.role === 'owner' && <DeleteButton icon title={`Xóa phiếu nhập ${r.receipt_code}?`}
+              onConfirm={async () => { await rpc('delete_purchase_receipt', { p_id: r.id }); toast(`Đã xóa phiếu ${r.receipt_code}, kho đã trừ lại`); hist.reload(); prods.reload(); }}>
+              <p><b>{r.receipt_code}</b> · {r.suppliers?.name || 'Không NCC'} · {money(r.total_amount)}</p>
+              <p>Hàng của phiếu bị trừ khỏi kho, khoản chi nhập hàng bị gỡ khỏi sổ quỹ, nợ nhà cung cấp của phiếu bị gỡ.</p>
+              <p className="text-slate-500">Chỉ xóa được khi hàng của phiếu chưa bán. Nếu đã bán, hãy xóa các hóa đơn đó trước.</p>
+            </DeleteButton>}</div>)) : <Empty text="Chưa có phiếu nhập" />}
       </Card>
     </div>
   );

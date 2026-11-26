@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase, rpc, q } from '../lib/supabase.js';
 import { money, num, datetime, isoDay } from '../lib/format.js';
-import { Card, Button, Input, Modal, Badge, Empty, Loading, ErrorBox, useLoad, useToast, Table, Field, Select } from '../components/ui.jsx';
+import { Card, Button, Input, Modal, Badge, Empty, Loading, ErrorBox, useLoad, useToast, Table, Field, Select, DeleteButton } from '../components/ui.jsx';
 import PrintInvoice from '../components/Print.jsx';
 
 export default function Invoices({ profile }) {
@@ -99,6 +99,12 @@ export function InvoiceDetail({ id, profile, onClose, onChanged }) {
             <Button color="gold" onClick={() => setPrint('k80')}>🖨️ In K80</Button>
             <Button color="sky" onClick={() => setPrint('a5')}>🖨️ In A5</Button>
             {i.status === 'completed' && profile.role !== 'staff' && <Button color="danger" onClick={() => setCancelOpen(true)}>🚫 Hủy hóa đơn</Button>}
+            {profile.role === 'owner' && <DeleteButton title={`Xóa hóa đơn ${i.invoice_code}?`} label="🗑️ Xóa hóa đơn (nhập sai)"
+              onConfirm={async () => { await rpc('delete_sales_invoice', { p_id: id }); toast(`Đã xóa hóa đơn ${i.invoice_code}`); onChanged(); onClose(); }}>
+              <p><b>{i.invoice_code}</b> · {i.customer_name} · {money(i.total_amount)}</p>
+              <p>Hóa đơn bị xóa hẳn khỏi danh sách và báo cáo.{i.status === 'completed' && ' Hàng được trả lại đúng lô trong kho.'} Khoản tiền đã thu bị gỡ khỏi sổ quỹ, công nợ của hóa đơn bị gỡ.</p>
+              <p className="text-slate-500">Khác với “Hủy hóa đơn”: hủy thì vẫn giữ lại hóa đơn với trạng thái “Đã hủy”.</p>
+            </DeleteButton>}
           </div>
           {cancelOpen && <div className="mt-4 rounded-2xl ring-2 ring-rose-300 p-3">
             <p className="text-sm">Hủy sẽ <b>nhập lại hàng vào đúng lô cũ</b>, hoàn tiền khỏi quỹ, xóa khoản nợ. Hóa đơn vẫn được lưu với trạng thái “Đã hủy”.</p>

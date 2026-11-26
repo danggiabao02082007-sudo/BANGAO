@@ -136,3 +136,24 @@ export function useLoad(fn, deps = []) {
 
 export const Loading = () => <div className="py-10 text-center text-slate-500 animate-pulse">🌾 Đang tải…</div>;
 export const ErrorBox = ({ error }) => <div className="rounded-2xl bg-rose-50 text-rose-700 p-4 font-semibold">⚠️ {error}</div>;
+
+// Nút xóa có hỏi lại. onConfirm trả Promise; lỗi từ máy chủ hiện thành thông báo.
+export function DeleteButton({ title, children, onConfirm, label = '🗑️ Xóa', icon, className = '' }) {
+  const [open, setOpen] = useState(false); const [busy, setBusy] = useState(false); const toast = useToast();
+  const go = async () => {
+    setBusy(true);
+    try { await onConfirm(); setOpen(false); } catch (e) { toast(e.message, 'err'); }
+    setBusy(false);
+  };
+  return (<>
+    {icon ? <button type="button" onClick={e => { e.stopPropagation(); setOpen(true); }} aria-label={title}
+        className={cx('shrink-0 w-9 h-9 rounded-full bg-rose-100 text-rose-600 hover:bg-rose-200', className)}>🗑️</button>
+      : <Button type="button" color="rose" className={className} onClick={() => setOpen(true)}>{label}</Button>}
+    {open && <Modal title={title} onClose={() => !busy && setOpen(false)}>
+      <div className="text-sm space-y-1">{children}</div>
+      <p className="text-xs text-rose-600 font-semibold mt-2">Không hoàn tác được. Nội dung bị xóa vẫn được lưu trong nhật ký hệ thống.</p>
+      <div className="flex gap-2 mt-4"><Button type="button" color="ghost" className="flex-1" onClick={() => setOpen(false)} disabled={busy}>Không xóa</Button>
+        <Button type="button" color="rose" className="flex-1" onClick={go} disabled={busy}>{busy ? 'Đang xóa…' : '🗑️ Xóa'}</Button></div>
+    </Modal>}
+  </>);
+}

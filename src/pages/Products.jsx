@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase, rpc, q } from '../lib/supabase.js';
 import { money, num, datetime, digits } from '../lib/format.js';
-import { Card, Button, Input, Select, Modal, Badge, Empty, Loading, ErrorBox, useLoad, useToast, Field, cx } from '../components/ui.jsx';
+import { Card, Button, Input, Select, Modal, Badge, Empty, Loading, ErrorBox, useLoad, useToast, Field, cx, DeleteButton } from '../components/ui.jsx';
 
 const TXN = { purchase: ['Nhập hàng', 'text-ruong-700'], sale: ['Bán', 'text-rose-600'], sale_cancel: ['Hủy HĐ (nhập lại)', 'text-sky-700'],
   adjust_in: ['Điều chỉnh tăng', 'text-ruong-700'], adjust_out: ['Điều chỉnh giảm', 'text-orange-600'] };
@@ -51,7 +51,7 @@ export default function Products({ profile }) {
       {tab === 'history' && <StockHistory />}
       {tab === 'check' && <Reconcile />}
       {edit && <Modal title={edit.id ? 'Sửa sản phẩm' : 'Thêm sản phẩm'} onClose={() => setEdit(null)}><ProductForm p={edit.id ? edit : null} canCost={mgr} onSaved={() => { setEdit(null); list.reload(); }} /></Modal>}
-      {view && <ProductView p={view} mgr={mgr} onClose={() => setView(null)} onEdit={() => { setEdit(view); setView(null); }} onChanged={list.reload} />}
+      {view && <ProductView p={view} mgr={mgr} owner={profile.role === 'owner'} onClose={() => setView(null)} onEdit={() => { setEdit(view); setView(null); }} onChanged={list.reload} />}
     </div>
   );
 }
@@ -123,7 +123,7 @@ function ProductForm({ p, canCost, onSaved }) {
   );
 }
 
-function ProductView({ p, mgr, onClose, onEdit, onChanged }) {
+function ProductView({ p, mgr, owner, onClose, onEdit, onChanged }) {
   const toast = useToast();
   const [adj, setAdj] = useState({ unit: 'kg', qty: '', sign: '-', reason: '' });
   const d = useLoad(async () => {
@@ -163,17 +163,28 @@ function ProductView({ p, mgr, onClose, onEdit, onChanged }) {
           </div>
         </>}
         <h4 className="font-bold mt-4 mb-1">📜 Biến động kho gần đây</h4>
-        <TxnList rows={d.data.txns} />
-        {mgr && <Button color="ghost" className="mt-4" onClick={onEdit}>✏️ Sửa sản phẩm / giá</Button>}
+        <TxnList rows={d.data.txns} onDelAdj={owner ? async t => { await rpc('delete_stock_adjustment', { p_id: t.ref_id }); toast('Đã xóa phiếu điều chỉnh, kho đã trả lại'); d.reload(); onChanged(); } : null} />
+        <div className="flex flex-wrap gap-2 mt-4">
+          {mgr && <Button color="ghost" onClick={onEdit}>✏️ Sửa sản phẩm / giá</Button>}
+          {owner && <DeleteButton title={`Xóa sản phẩm ${p.name}?`} label="🗑️ Xóa sản phẩm"
+            onConfirm={async () => { await rpc('delete_product', { p_id: p.id }); toast(`Đã xóa ${p.name}`); onChanged(); onClose(); }}>
+            <p><b>{p.product_code} · {p.name}</b></p>
+            <p className="text-slate-500">Chỉ xóa được sản phẩm chưa nhập/bán lần nào. Nếu đã có, hãy xóa các phiếu đó trước, hoặc bỏ chọn “Đang kinh doanh” để ngừng bán.</p>
+          </DeleteButton>}
+        </div>
       </>}
     </Modal>
   );
 }
 
-const TxnList = ({ rows, names }) => rows.length ? rows.map(t => (
-  <div key={t.id} className="flex justify-between gap-2 text-sm border-b py-1.5">
-    <span>{datetime(t.created_at)} · <b className={TXN[t.txn_type][1]}>{TXN[t.txn_type][0]}</b>{names && <> · {names[t.product_id]}</>} <span className="text-slate-500">{t.note}</span></span>
-    <b className={t.qty_change > 0 ? 'text-ruong-700' : 'text-rose-600'}>{t.qty_change > 0 ? '+' : ''}{num(t.qty_change, 3)} bao</b></div>)) : <Empty text="Chưa có biến động" />;
+const TxnList = ({ rows, names, onDelAdj }) => rows.length ? rows.map(t => (
+  <div key={t.id} className="flex justify-between items-center gap-2 text-sm border-b py-1.5">
+    <span className="flex-1">{datetime(t.created_at)} · <b className={TXN[t.txn_type][1]}>{TXN[t.txn_type][0]}</b>{names && <> · {names[t.product_id]}</>} <span className="text-slate-500">{t.note}</span></span>
+    <b className={t.qty_change > 0 ? 'text-ruong-700' : 'text-rose-600'}>{t.qty_change > 0 ? '+' : ''}{num(t.qty_change, 3)} bao</b>
+    {onDelAdj && t.ref_table === 'stock_adjustments' && <DeleteButton icon title="Xóa phiếu điều chỉnh này?" onConfirm={() => onDelAdj(t)}>
+      <p><b>{t.note}</b> · {t.qty_change > 0 ? '+' : ''}{num(t.qty_change, 3)} bao · {datetime(t.created_at)}</p>
+      <p>Số bao đã {t.qty_change > 0 ? 'cộng thêm sẽ bị trừ lại' : 'trừ sẽ được trả lại đúng lô'}.</p>
+    </DeleteButton>}</div>)) : <Empty text="Chưa có biến động" />;
 
 function StockHistory() {
   const d = useLoad(async () => {

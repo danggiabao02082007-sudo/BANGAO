@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase, rpc, q } from '../lib/supabase.js';
 import { money, datetime, digits } from '../lib/format.js';
-import { Card, Button, Input, Select, Modal, Badge, Empty, Loading, ErrorBox, useLoad, useToast, Field } from '../components/ui.jsx';
+import { Card, Button, Input, Select, Modal, Badge, Empty, Loading, ErrorBox, useLoad, useToast, Field, DeleteButton } from '../components/ui.jsx';
 import { InvoiceDetail } from './Invoices.jsx';
 
 export function CustomerForm({ initial, onSaved }) {
@@ -106,9 +106,21 @@ function CustomerView({ c, profile, onClose, onEdit }) {
             <span><b>{money(i.total_amount)}</b>{i.debt_remaining > 0 && <span className="text-rose-600"> · nợ {money(i.debt_remaining)}</span>}</span></button>))
           : <Empty text="Chưa mua hàng" />}
         <h4 className="font-bold mt-4 mb-1">📒 Sổ công nợ</h4>
-        {d.data.ledger.map(e => <div key={e.id} className="flex justify-between py-1.5 border-b text-sm"><span>{datetime(e.entry_date)} · {e.note}</span>
-          <b className={e.amount > 0 ? 'text-rose-600' : 'text-ruong-700'}>{e.amount > 0 ? '+' : ''}{money(e.amount)}</b></div>)}
-        <Button color="ghost" className="mt-4" onClick={onEdit}>✏️ Sửa thông tin</Button>
+        {d.data.ledger.map(e => <div key={e.id} className="flex justify-between items-center gap-2 py-1.5 border-b text-sm"><span className="flex-1">{datetime(e.entry_date)} · {e.note}</span>
+          <b className={e.amount > 0 ? 'text-rose-600' : 'text-ruong-700'}>{e.amount > 0 ? '+' : ''}{money(e.amount)}</b>
+          {profile.role === 'owner' && e.ref_table === 'payments' && <DeleteButton icon title="Xóa lần thu nợ này?"
+            onConfirm={async () => { await rpc('delete_debt_collection', { p_id: e.ref_id }); toast('Đã xóa lần thu nợ, công nợ đã cộng lại'); d.reload(); }}>
+            <p><b>{e.note}</b> · {money(-e.amount)} · {datetime(e.entry_date)}</p>
+            <p>Khoản thu bị gỡ khỏi sổ quỹ, số nợ của khách cộng lại như trước khi thu.</p>
+          </DeleteButton>}</div>)}
+        <div className="flex flex-wrap gap-2 mt-4">
+          <Button color="ghost" onClick={onEdit}>✏️ Sửa thông tin</Button>
+          {profile.role === 'owner' && <DeleteButton title={`Xóa khách ${c.name}?`} label="🗑️ Xóa khách hàng"
+            onConfirm={async () => { await rpc('delete_customer', { p_id: c.id }); toast(`Đã xóa khách ${c.name}`); onClose(); }}>
+            <p><b>{c.name}</b> · {d.data.cust.code} · {d.data.cust.phone || 'chưa có SĐT'}</p>
+            <p className="text-slate-500">Chỉ xóa được khách chưa có hóa đơn. Nếu khách đã mua hàng, hãy xóa các hóa đơn đó trước.</p>
+          </DeleteButton>}
+        </div>
       </>}
       {inv && <InvoiceDetail id={inv} profile={profile} onClose={() => setInv(null)} onChanged={d.reload} />}
     </Modal>

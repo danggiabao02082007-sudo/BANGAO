@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { supabase, q } from '../lib/supabase.js';
+import { supabase, q, rpc } from '../lib/supabase.js';
 import { money } from '../lib/format.js';
-import { Card, Button, Input, Field, Modal, Empty, Loading, ErrorBox, useLoad, useToast } from '../components/ui.jsx';
+import { Card, Button, Input, Field, Modal, Empty, Loading, ErrorBox, useLoad, useToast, DeleteButton } from '../components/ui.jsx';
 
-export default function Suppliers() {
+export default function Suppliers({ profile }) {
   const toast = useToast();
   const list = useLoad(() => q(supabase.from('v_suppliers').select('*').eq('is_active', true).order('name')), []);
   const [edit, setEdit] = useState(null);
@@ -29,7 +29,12 @@ export default function Suppliers() {
           <Field label="Địa chỉ"><Input value={edit.address || ''} onChange={e => setEdit({ ...edit, address: e.target.value })} /></Field>
           <Field label="Ghi chú"><Input value={edit.note || ''} onChange={e => setEdit({ ...edit, note: e.target.value })} /></Field>
           <Button className="w-full">💾 Lưu</Button>
-        </form></Modal>}
+        </form>
+        {edit.id && profile?.role === 'owner' && <DeleteButton title={`Xóa nhà cung cấp ${edit.name}?`} label="🗑️ Xóa nhà cung cấp" className="w-full mt-2"
+          onConfirm={async () => { await rpc('delete_supplier', { p_id: edit.id }); toast(`Đã xóa ${edit.name}`); setEdit(null); list.reload(); }}>
+          <p><b>{edit.name}</b> · {edit.code} · {edit.phone || '—'}</p>
+          <p className="text-slate-500">Chỉ xóa được nhà cung cấp chưa có phiếu nhập. Nếu đã có, hãy xóa các phiếu đó trước.</p>
+        </DeleteButton>}</Modal>}
     </div>
   );
 }

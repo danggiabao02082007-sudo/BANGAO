@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { supabase, rpc, q } from '../lib/supabase.js';
 import { money, datetime, digits, isoDay } from '../lib/format.js';
-import { Card, Button, Input, Select, Field, Empty, Loading, ErrorBox, useLoad, useToast, Badge, cx } from '../components/ui.jsx';
+import { Card, Button, Input, Select, Field, Empty, Loading, ErrorBox, useLoad, useToast, Badge, cx, DeleteButton } from '../components/ui.jsx';
 
-export default function Cash() {
+export default function Cash({ profile }) {
   const toast = useToast();
   const [from, setFrom] = useState(isoDay(new Date(Date.now() - 29 * 864e5))); const [to, setTo] = useState(isoDay());
   const [f, setF] = useState({ direction: 'in', category: 'other_in', amount: '', account: 'cash', party: '', note: '' });
@@ -33,6 +33,7 @@ export default function Cash() {
         <Field label="Ghi chú" className="mt-2"><Input value={f.note} onChange={e => setF({ ...f, note: e.target.value })} /></Field>
         <Button className="w-full mt-3" color="violet" onClick={save} disabled={!Number(f.amount)}>💾 Ghi sổ</Button>
         <p className="text-xs text-slate-500 mt-2">Thu bán hàng, thu nợ, chi nhập hàng được ghi tự động. Các khoản chi (điện, nước, vận chuyển…) ghi ở mục <b>💸 Chi tiêu</b> và tự hiện trong sổ quỹ.</p>
+        <p className="text-xs text-slate-500 mt-1">Nút 🗑️ chỉ có ở khoản ghi tay. Khoản tự động thì xóa từ hóa đơn/phiếu gốc, khoản chi thì xóa ở mục Chi tiêu.</p>
       </Card>
       <Card title="Sổ quỹ" icon="📒" accent="from-purple-500 to-pink-500">
         <div className="grid grid-cols-2 gap-2"><Field label="Từ ngày"><Input type="date" value={from} onChange={e => setFrom(e.target.value)} /></Field>
@@ -40,9 +41,13 @@ export default function Cash() {
         <div className="flex flex-wrap gap-2 my-3"><Badge>Thu {money(tin)}</Badge><Badge color="bg-rose-100 text-rose-700">Chi {money(tout)}</Badge>
           <Badge color="bg-violet-100 text-violet-700">Chênh lệch {money(tin - tout)}</Badge></div>
         {rows.loading ? <Loading /> : rows.error ? <ErrorBox error={rows.error} /> : rows.data.length ? rows.data.map(r => (
-          <div key={r.id} className="flex justify-between gap-2 py-2 border-b text-sm">
-            <span>{datetime(r.txn_date)} · <b>{name[r.category]}</b> · {r.cash_accounts?.name}<div className="text-xs text-slate-500">{r.party_name} {r.note}</div></span>
-            <b className={r.direction === 'in' ? 'text-ruong-700' : 'text-rose-600'}>{r.direction === 'in' ? '+' : '−'}{money(r.amount)}</b></div>)) : <Empty text="Không có giao dịch" />}
+          <div key={r.id} className="flex justify-between items-center gap-2 py-2 border-b text-sm">
+            <span className="flex-1">{datetime(r.txn_date)} · <b>{name[r.category]}</b> · {r.cash_accounts?.name}<div className="text-xs text-slate-500">{r.party_name} {r.note}</div></span>
+            <b className={r.direction === 'in' ? 'text-ruong-700' : 'text-rose-600'}>{r.direction === 'in' ? '+' : '−'}{money(r.amount)}</b>
+            {profile?.role === 'owner' && !r.ref_table && <DeleteButton icon title="Xóa khoản thu/chi này?"
+              onConfirm={async () => { await rpc('delete_cash_entry', { p_id: r.id }); toast('Đã xóa khỏi sổ quỹ'); rows.reload(); }}>
+              <p><b>{name[r.category]}</b> · {money(r.amount)} · {datetime(r.txn_date)}</p><p>{r.party_name} {r.note}</p>
+            </DeleteButton>}</div>)) : <Empty text="Không có giao dịch" />}
       </Card>
     </div>
   );
