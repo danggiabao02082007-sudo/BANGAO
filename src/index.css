@@ -77,3 +77,37 @@ html.motion-off .bird, html.motion-off .falling, html.motion-off .dragonfly, htm
 .cart-scroll { scrollbar-width: thin; scrollbar-color: rgba(22,163,74,.45) transparent; }
 .cart-scroll::-webkit-scrollbar { width: 8px; }
 .cart-scroll::-webkit-scrollbar-thumb { background: rgba(22,163,74,.45); border-radius: 8px; }
+
+/* ======================= GIAO DIỆN GIÁNG SINH (html.xmas) ======================= */
+html.xmas { background: #EEF2FF; }
+/* Xe trượt tuyết do tuần lộc kéo bay ngang trời */
+@keyframes sleigh { from { transform: translateX(-60%); } to { transform: translateX(110%); } }
+.sleigh { will-change: transform; animation: sleigh 32s linear infinite; }
+/* Đèn trên cây thông, sao lấp lánh */
+@keyframes twinkle { 0%,100% { opacity: .25; } 50% { opacity: 1; } }
+.twinkle { animation: twinkle 1.8s ease-in-out infinite; } .twinkle.t2 { animation-duration: 2.6s; animation-delay: -1.1s; }
+/* Tuyết rơi khắp màn hình */
+.snowfall .flake { position: absolute; top: -14px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff, #E0F2FE 70%);
+  box-shadow: 0 0 3px rgba(100,116,139,.45); will-change: transform; animation-name: snow; animation-timing-function: linear; animation-iteration-count: infinite; }
+@keyframes snow { 0% { transform: translate(0,-2vh); } 50% { transform: translate(var(--drift), 52vh); } 100% { transform: translate(0,106vh); } }
+/* Tuyết phủ trên mép trên của mọi thẻ */
+html.xmas .xmas-card { position: relative; }
+html.xmas .xmas-card::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 12px; z-index: 3; pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 0, #fff 8px, transparent 9px) 0 0 / 26px 12px repeat-x,
+    radial-gradient(circle at 50% 0, #fff 5px, transparent 6px) 13px 1px / 26px 10px repeat-x,
+    linear-gradient(#fff, #fff) 0 0 / 100% 4px no-repeat;
+  filter: drop-shadow(0 2px 1px rgba(100,116,139,.35)); }
+/* Dây đèn nhấp nháy dưới thanh tiêu đề */
+html.xmas .xmas-header::after { content: ''; position: absolute; left: 0; right: 0; bottom: -7px; height: 12px; pointer-events: none;
+  background:
+    linear-gradient(#14532D, #14532D) 0 3px / 100% 1.5px no-repeat,
+    radial-gradient(circle, #EF4444 3.5px, transparent 4.5px) 0 2px / 48px 12px repeat-x,
+    radial-gradient(circle, #FACC15 3.5px, transparent 4.5px) 16px 2px / 48px 12px repeat-x,
+    radial-gradient(circle, #22C55E 3.5px, transparent 4.5px) 32px 2px / 48px 12px repeat-x;
+  animation: twinkle 1.6s ease-in-out infinite; }
+/* Mức hiệu ứng: Nhẹ/Tắt thì bỏ tuyết rơi và xe bay; giảm chuyển động của hệ thống cũng vậy */
+html.motion-lite .snowfall, html.motion-off .snowfall { display: none; }
+html.motion-lite .sleigh, html.motion-lite .twinkle, html.motion-lite .xmas-header::after { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .snowfall { display: none; } .sleigh, .twinkle, html.xmas .xmas-header::after { animation: none !important; } }
+.xmas-only { display: none; } html.xmas .xmas-only { display: inline; }

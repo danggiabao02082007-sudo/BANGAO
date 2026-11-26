@@ -3,6 +3,7 @@ import { supabase, rpc, q } from '../lib/supabase.js';
 import { ROLE, datetime } from '../lib/format.js';
 import { downloadBackup } from '../lib/backup.js';
 import { MODES, getMode, setMode, getEffective } from '../lib/motion.js';
+import { THEMES, getTheme, setTheme } from '../lib/theme.js';
 import { useEffect } from 'react';
 import { Card, Button, Input, Select, Field, Loading, ErrorBox, useLoad, useToast, Badge, Modal, cx } from '../components/ui.jsx';
 
@@ -45,6 +46,7 @@ export default function Settings({ profile }) {
       {owner && <BackupCard />}
       {owner && <ResetCard />}
       {owner && <RestoreCard />}
+      <ThemeCard />
       <MotionCard />
       <ChangePassword />
       <Card title="Quyền của từng vai trò" icon="🔐" accent="from-amber-500 to-lime-500" className="lg:col-span-2">
@@ -104,6 +106,22 @@ function BackupCard() {
       <Button color="sky" className="w-full mt-3" onClick={run} disabled={busy}>{busy ? 'Đang chuẩn bị file…' : '💾 Xuất sao lưu'}</Button>
       {last && <p className="text-xs text-slate-600 mt-2">✅ {last.name} · {Math.max(1, Math.round(last.size / 1024))} KB · {last.counts.sales_invoices} hóa đơn, {last.counts.products} sản phẩm, {last.counts.expenses} khoản chi.</p>}
       <p className="text-xs text-slate-500 mt-2">Nên sao lưu ít nhất mỗi tuần. Gói Supabase miễn phí không tự sao lưu; app sẽ nhắc trên Tổng quan khi quá 7 ngày chưa sao lưu. File chứa toàn bộ dữ liệu kinh doanh, hãy giữ kín.</p>
+    </Card>
+  );
+}
+
+function ThemeCard() {
+  const [theme, setT] = useState(getTheme());
+  const pick = t => { setT(t); setTheme(t); };
+  return (
+    <Card title="Giao diện" icon="🎨" accent="from-red-500 to-emerald-500">
+      <div className="grid grid-cols-2 gap-2">
+        {THEMES.map(([k, t]) => (
+          <button key={k} onClick={() => pick(k)} aria-pressed={theme === k}
+            className={'rounded-2xl py-3 px-2 font-bold text-sm ' + (theme === k ? 'bg-gradient-to-r from-red-500 to-emerald-500 text-white shadow' : 'bg-slate-100')}>{t}</button>))}
+      </div>
+      <p className="text-sm mt-3">{THEMES.find(x => x[0] === theme)[2]}.</p>
+      <p className="text-xs text-slate-500 mt-1">Lựa chọn chỉ áp dụng cho máy này.</p>
     </Card>
   );
 }

@@ -5,7 +5,7 @@ export const cx = (...a) => a.filter(Boolean).join(' ');
 
 export function Card({ title, icon, accent = 'from-ruong-500 to-lime-400', right, children, className = '', bodyClass = '' }) {
   return (
-    <section className={cx('rounded-3xl bg-white/95 shadow-soft ring-1 ring-black/5 overflow-hidden', className)}>
+    <section className={cx('xmas-card rounded-3xl bg-white/95 shadow-soft ring-1 ring-black/5 overflow-hidden', className)}>
       {title && (
         <header className={cx('flex items-center gap-2 px-4 py-3 text-white bg-gradient-to-r', accent)}>
           {icon && <span className="text-xl leading-none">{icon}</span>}
@@ -63,7 +63,7 @@ export function CountUp({ value, format = String, ms = 900 }) {
 
 export function Stat({ label, value, sub, icon, grad, format }) {
   return (
-    <div className={cx('shine rounded-3xl p-4 text-white shadow-soft bg-gradient-to-br relative overflow-hidden', grad)}>
+    <div className={cx('xmas-card shine rounded-3xl p-4 text-white shadow-soft bg-gradient-to-br relative overflow-hidden', grad)}>
       <div className="absolute -right-3 -bottom-4 text-6xl opacity-25 select-none floaty">{icon}</div>
       <div className="text-[13px] font-semibold opacity-95">{icon} {label}</div>
       <div className="text-[18px] sm:text-[22px] font-extrabold mt-1 leading-tight whitespace-nowrap">{typeof value === 'number' ? <CountUp value={value} format={format} /> : value}</div>

@@ -58,7 +58,7 @@ export default function Products({ profile }) {
             {rows.map(p => {
               const low = stockOn && Number(p.min_stock) > 0 && Number(p.stock_bao) <= Number(p.min_stock);
               return (
-                <button key={p.id} onClick={() => sel.on ? sel.toggle(p.id) : setView(p)} className={cx('text-left rounded-3xl bg-white/95 shadow-soft p-4 ring-2', sel.has(p.id) ? 'ring-rose-400' : low ? 'ring-rose-300' : 'ring-transparent', !p.is_active && 'opacity-60')}>
+                <button key={p.id} onClick={() => sel.on ? sel.toggle(p.id) : setView(p)} className={cx('xmas-card overflow-hidden text-left rounded-3xl bg-white/95 shadow-soft p-4 ring-2', sel.has(p.id) ? 'ring-rose-400' : low ? 'ring-rose-300' : 'ring-transparent', !p.is_active && 'opacity-60')}>
                   <div className="flex gap-3 items-start">
                     {sel.on && <Check checked={sel.has(p.id)} />}
                     <span className="text-3xl w-12 h-12 rounded-2xl bg-gradient-to-br from-lua-200 to-ruong-200 grid place-items-center">{p.emoji}</span>

@@ -45,13 +45,13 @@ export default function Reports() {
 
       {month.loading ? <Loading /> : month.error ? <ErrorBox error={month.error} /> : <>
         <div className="grid sm:grid-cols-2 gap-3">
-          <div className="rounded-3xl p-5 text-white shadow-soft bg-gradient-to-br from-lua-500 to-orange-500 relative overflow-hidden">
+          <div className="xmas-card rounded-3xl p-5 text-white shadow-soft bg-gradient-to-br from-lua-500 to-orange-500 relative overflow-hidden">
             <div className="absolute -right-2 -bottom-4 text-7xl opacity-25">🌾</div>
             <div className="font-bold">Doanh thu bán ngày {date(day)}</div>
             <div className="text-3xl font-extrabold mt-1">{money(sel.revenue)}</div>
             <div className="text-sm opacity-90 mt-1">{sel.invoices} hóa đơn</div>
           </div>
-          <div className={cx('rounded-3xl p-5 text-white shadow-soft bg-gradient-to-br relative overflow-hidden', Number(sel.profit) >= 0 ? 'from-ruong-600 to-lime-500' : 'from-rose-600 to-red-500')}>
+          <div className={cx('xmas-card rounded-3xl p-5 text-white shadow-soft bg-gradient-to-br relative overflow-hidden', Number(sel.profit) >= 0 ? 'from-ruong-600 to-lime-500' : 'from-rose-600 to-red-500')}>
             <div className="absolute -right-2 -bottom-4 text-7xl opacity-25">💰</div>
             <div className="font-bold">Lợi nhuận ngày {date(day)}</div>
             <div className="text-3xl font-extrabold mt-1">{money(sel.profit)}</div>
@@ -59,7 +59,7 @@ export default function Reports() {
           </div>
         </div>
 
-        <div className={cx('rounded-3xl p-5 text-white shadow-soft bg-gradient-to-br relative overflow-hidden shine', Number(sel.real_profit) >= 0 ? 'from-teal-600 to-cyan-500' : 'from-rose-600 to-red-500')}>
+        <div className={cx('xmas-card rounded-3xl p-5 text-white shadow-soft bg-gradient-to-br relative overflow-hidden shine', Number(sel.real_profit) >= 0 ? 'from-teal-600 to-cyan-500' : 'from-rose-600 to-red-500')}>
           <div className="absolute -right-2 -bottom-4 text-7xl opacity-25">🏆</div>
           <div className="font-bold">Lợi nhuận thực ngày {date(day)}</div>
           <div className="text-3xl font-extrabold mt-1">{money(sel.real_profit)}</div>
