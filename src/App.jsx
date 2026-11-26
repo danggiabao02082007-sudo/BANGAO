@@ -48,7 +48,9 @@ export default function App() {
   }, []);
   useEffect(() => {
     if (!session) { setProfile(null); return; }
-    supabase.from('profiles').select('*').eq('id', session.user.id).single().then(({ data }) => setProfile(data || { role: null }));
+    // profile.stock = công tắc quản lý tồn kho (store_settings.track_stock). false = ẩn mọi phần kho
+    Promise.all([supabase.from('profiles').select('*').eq('id', session.user.id).single(), supabase.from('store_settings').select('track_stock').single()])
+      .then(([{ data }, { data: st }]) => setProfile(data ? { ...data, stock: st?.track_stock !== false } : { role: null }));
   }, [session]);
   useEffect(() => { const h = () => setPage(location.hash.slice(1) || 'dashboard'); addEventListener('hashchange', h); return () => removeEventListener('hashchange', h); }, []);
   const go = id => { location.hash = id; setMore(false); scrollTo(0, 0); };
@@ -57,7 +59,8 @@ export default function App() {
   if (!session) return <Login />;
   if (!profile.role || !profile.is_active) return <Blocked onOut={() => supabase.auth.signOut()} />;
 
-  const menu = MENU.filter(m => !m.roles || m.roles.includes(profile.role));
+  const menu = MENU.filter(m => !m.roles || m.roles.includes(profile.role))
+    .map(m => m.id === 'products' && !profile.stock ? { ...m, label: 'Sản phẩm', short: 'Sản phẩm' } : m);
   const cur = menu.find(m => m.id === page) || menu[0];
   const Page = pages[cur.id];
 

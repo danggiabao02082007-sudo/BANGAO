@@ -18,7 +18,7 @@ export const priceLines = p => (p.units || []).filter(u => u.is_active).map(u =>
 const noPrice = p => !(p.units || []).some(u => u.is_active && Number(u.retail_price) > 0);
 
 export default function Products({ profile }) {
-  const mgr = profile.role !== 'staff';
+  const mgr = profile.role !== 'staff'; const stockOn = profile.stock;
   const [tab, setTab] = useState('list');
   const [s, setS] = useState(''); const [cat, setCat] = useState(''); const [warn, setWarn] = useState('');
   const [edit, setEdit] = useState(null); const [view, setView] = useState(null); const [opening, setOpening] = useState(false);
@@ -31,7 +31,7 @@ export default function Products({ profile }) {
     && (!warn || (warn === 'cost' ? mgr && !cost[p.id] : warn === 'price' ? noPrice(p) : Number(p.stock_bao) <= 0))
     && (!s || [p.name, p.product_code, p.barcode || ''].some(x => x.toLowerCase().includes(s.toLowerCase()))));
   const nCost = mgr ? (list.data || []).filter(p => !cost[p.id]).length : 0, nPrice = (list.data || []).filter(noPrice).length;
-  const tabs = [['list', '🍚 Sản phẩm & tồn'], ['history', '📜 Lịch sử kho'], ...(mgr ? [['check', '⚖️ Đối soát']] : [])];
+  const tabs = stockOn ? [['list', '🍚 Sản phẩm & tồn'], ['history', '📜 Lịch sử kho'], ...(mgr ? [['check', '⚖️ Đối soát']] : [])] : [];
   const reload = () => { list.reload(); costs.reload(); };
   return (
     <div className="space-y-4">
@@ -41,13 +41,13 @@ export default function Products({ profile }) {
       </div>
       {tab === 'list' && <>
         <Card title={`Sản phẩm (${(list.data || []).length})`} icon="🍚" accent="from-amber-500 to-yellow-400"
-          right={mgr && <div className="flex gap-2"><Button small color="ghost" onClick={() => setOpening(true)}>📥 Nhập tồn đầu kỳ</Button><Button small color="ghost" onClick={() => setEdit({})}>＋ Thêm</Button></div>}>
+          right={mgr && <div className="flex gap-2">{stockOn && <Button small color="ghost" onClick={() => setOpening(true)}>📥 Nhập tồn đầu kỳ</Button>}<Button small color="ghost" onClick={() => setEdit({})}>＋ Thêm</Button></div>}>
           <div className="flex gap-2">
             <Input value={s} onChange={e => setS(e.target.value)} placeholder="🔎 Tên, mã, mã vạch" />
             <Select value={cat} onChange={e => setCat(e.target.value)} className="!w-36"><option value="">Mọi nhóm</option>{cats.map(c => <option key={c}>{c}</option>)}</Select>
           </div>
           <div className="flex flex-wrap gap-2 mt-2 text-sm">
-            {[['', 'Tất cả'], ['stock', '📦 Hết hàng'], ['price', `💰 Chưa có giá bán (${nPrice})`], ...(mgr ? [['cost', `🧾 Chưa có giá nhập (${nCost})`]] : [])].map(([k, t]) =>
+            {[['', 'Tất cả'], ...(stockOn ? [['stock', '📦 Hết hàng']] : []), ['price', `💰 Chưa có giá bán (${nPrice})`], ...(mgr ? [['cost', `🧾 Chưa có giá nhập (${nCost})`]] : [])].map(([k, t]) =>
               <button key={k} onClick={() => setWarn(k)} className={cx('rounded-full px-3 py-1 font-bold', warn === k ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-800 ring-1 ring-amber-200')}>{t}</button>)}
           </div>
           {owner && <BulkBar s={sel} kind="product" noun="sản phẩm" className="mt-3" onDone={reload}
@@ -56,7 +56,7 @@ export default function Products({ profile }) {
         {list.loading ? <Loading /> : list.error ? <ErrorBox error={list.error} /> : !rows.length ? <Card><Empty text={mgr ? 'Không có sản phẩm phù hợp' : 'Chưa có sản phẩm'} /></Card> : (
           <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
             {rows.map(p => {
-              const low = Number(p.min_stock) > 0 && Number(p.stock_bao) <= Number(p.min_stock);
+              const low = stockOn && Number(p.min_stock) > 0 && Number(p.stock_bao) <= Number(p.min_stock);
               return (
                 <button key={p.id} onClick={() => sel.on ? sel.toggle(p.id) : setView(p)} className={cx('text-left rounded-3xl bg-white/95 shadow-soft p-4 ring-2', sel.has(p.id) ? 'ring-rose-400' : low ? 'ring-rose-300' : 'ring-transparent', !p.is_active && 'opacity-60')}>
                   <div className="flex gap-3 items-start">
@@ -69,9 +69,9 @@ export default function Products({ profile }) {
                         {noPrice(p) && <Badge color="bg-rose-100 text-rose-700">Chưa có giá bán</Badge>}
                         {mgr && costs.data && !cost[p.id] && <Badge color="bg-orange-100 text-orange-700">Chưa có giá nhập</Badge>}</div></div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 mt-3 text-sm">
-                    <div className={cx('rounded-xl p-2', low || Number(p.stock_bao) <= 0 ? 'bg-rose-50' : 'bg-ruong-50')}>Tồn<br /><b className={low || Number(p.stock_bao) <= 0 ? 'text-rose-600' : 'text-ruong-700'}>{qtyU(p, p.stock_bao)}</b>
-                      {suCode(p) === 'bao' && <div className="text-[11px]">≈ {num(p.stock_kg, 1)} kg</div>}</div>
+                  <div className={cx('grid gap-2 mt-3 text-sm', stockOn ? 'grid-cols-2' : 'grid-cols-1')}>
+                    {stockOn && <div className={cx('rounded-xl p-2', low || Number(p.stock_bao) <= 0 ? 'bg-rose-50' : 'bg-ruong-50')}>Tồn<br /><b className={low || Number(p.stock_bao) <= 0 ? 'text-rose-600' : 'text-ruong-700'}>{qtyU(p, p.stock_bao)}</b>
+                      {suCode(p) === 'bao' && <div className="text-[11px]">≈ {num(p.stock_kg, 1)} kg</div>}</div>}
                     <div className="rounded-xl p-2 bg-lua-50">Giá bán{priceLines(p).map(t => <div key={t} className="font-bold text-[13px] leading-tight">{t}</div>)}</div>
                   </div>
                   {low && <div className="text-xs text-rose-600 font-bold mt-2">⚠️ Dưới mức cảnh báo ({qtyU(p, p.min_stock, 2)})</div>}
@@ -81,14 +81,14 @@ export default function Products({ profile }) {
       </>}
       {tab === 'history' && <StockHistory />}
       {tab === 'check' && <Reconcile />}
-      {edit && <Modal title={edit.id ? 'Sửa sản phẩm' : 'Thêm sản phẩm'} onClose={() => setEdit(null)}><ProductForm p={edit.id ? edit : null} canCost={mgr} onSaved={() => { setEdit(null); reload(); }} /></Modal>}
-      {view && <ProductView p={view} mgr={mgr} owner={owner} onClose={() => setView(null)} onEdit={() => { setEdit(view); setView(null); }} onChanged={reload} />}
+      {edit && <Modal title={edit.id ? 'Sửa sản phẩm' : 'Thêm sản phẩm'} onClose={() => setEdit(null)}><ProductForm p={edit.id ? edit : null} canCost={mgr} stockOn={stockOn} onSaved={() => { setEdit(null); reload(); }} /></Modal>}
+      {view && <ProductView p={view} mgr={mgr} owner={owner} stockOn={stockOn} onClose={() => setView(null)} onEdit={() => { setEdit(view); setView(null); }} onChanged={reload} />}
       {opening && <OpeningStock prods={list.data || []} cost={cost} onClose={() => setOpening(false)} onDone={reload} />}
     </div>
   );
 }
 
-function ProductForm({ p, canCost, onSaved }) {
+function ProductForm({ p, canCost, stockOn = true, onSaved }) {
   const toast = useToast();
   const cats = useLoad(async () => {
     const [c, costs] = await Promise.all([q(supabase.from('categories').select('*').order('sort')), canCost && p ? rpc('product_costs', {}) : []]);
@@ -142,10 +142,10 @@ function ProductForm({ p, canCost, onSaved }) {
       <div className="grid grid-cols-2 gap-3">
         <Field label="Nhóm"><Select value={f.category_id || cats.data.find(c => c.name === 'Hàng hóa')?.id || ''} onChange={set('category_id')}>{cats.data.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}</Select></Field>
         <Field label="Mã SP" hint="Để trống: tự sinh"><Input value={f.product_code} onChange={set('product_code')} /></Field>
-        <Field label="Tính tồn kho theo *" className="col-span-2" hint={p ? 'Không đổi được khi đã nhập/bán' : ''}>
+        <Field label={stockOn ? 'Tính tồn kho theo *' : 'Đơn vị bán *'} className="col-span-2" hint={p && stockOn ? 'Không đổi được khi đã nhập/bán' : ''}>
           <Select value={f.stock_unit} onChange={set('stock_unit')}>{STOCK_UNITS.map(([k, t]) => <option key={k} value={k}>{t}</option>)}</Select></Field>
         {isBao && <Field label="Số kg mỗi bao *"><Input inputMode="decimal" value={f.kg_per_bao} onChange={set('kg_per_bao')} required /></Field>}
-        <Field label={`Cảnh báo khi tồn ≤ (${unitWord})`} hint="0 = không cảnh báo"><Input inputMode="decimal" value={f.min_stock} onChange={set('min_stock')} /></Field>
+        {stockOn && <Field label={`Cảnh báo khi tồn ≤ (${unitWord})`} hint="0 = không cảnh báo"><Input inputMode="decimal" value={f.min_stock} onChange={set('min_stock')} /></Field>}
       </div>
       <Field label="Mã vạch"><Input value={f.barcode} onChange={set('barcode')} placeholder="Quét hoặc nhập" /></Field>
       {canCost && <div className="rounded-2xl bg-violet-50 p-3">
@@ -171,7 +171,7 @@ function ProductForm({ p, canCost, onSaved }) {
   );
 }
 
-function ProductView({ p, mgr, owner, onClose, onEdit, onChanged }) {
+function ProductView({ p, mgr, owner, stockOn = true, onClose, onEdit, onChanged }) {
   const toast = useToast();
   const [adj, setAdj] = useState({ unit: suCode(p), qty: '', sign: '-', reason: '' });
   const d = useLoad(async () => {
@@ -191,8 +191,8 @@ function ProductView({ p, mgr, owner, onClose, onEdit, onChanged }) {
   return (
     <Modal title={`${p.emoji} ${p.name}`} onClose={onClose} wide>
       {d.loading ? <Loading /> : d.error ? <ErrorBox error={d.error} /> : <>
-        <div className="grid sm:grid-cols-3 gap-2 text-sm">
-          <div className="rounded-2xl bg-ruong-50 p-3">Tồn kho<br /><b className="text-lg text-ruong-700">{qtyU(p, p.stock_bao)}</b>{suCode(p) === 'bao' && <><br />≈ {num(p.stock_kg, 1)} kg</>}</div>
+        <div className={cx('grid gap-2 text-sm', stockOn ? 'sm:grid-cols-3' : 'sm:grid-cols-2')}>
+          {stockOn && <div className="rounded-2xl bg-ruong-50 p-3">Tồn kho<br /><b className="text-lg text-ruong-700">{qtyU(p, p.stock_bao)}</b>{suCode(p) === 'bao' && <><br />≈ {num(p.stock_kg, 1)} kg</>}</div>}
           <div className="rounded-2xl bg-lua-50 p-3">{p.units.filter(u => u.is_active).map(u => <div key={u.unit_code}>{unitLabel(u)}: <b>{money(u.retail_price)}</b>
             {baoPerKg(p, u) != null && <span className="text-xs"> ({money(baoPerKg(p, u))}/kg)</span>} · sỉ {money(u.wholesale_price)}</div>)}
             {!p.units.some(u => u.is_active && Number(u.retail_price) > 0) && <b className="text-rose-600">Chưa có giá bán</b>}</div>
@@ -200,7 +200,7 @@ function ProductView({ p, mgr, owner, onClose, onEdit, onChanged }) {
             {!Number(d.data.cost) && <div className="text-xs text-rose-600 font-bold">Chưa có giá nhập: vốn sẽ tính 0</div>}</div>}
         </div>
         {p.description && <p className="text-xs text-slate-500 mt-2">{p.description}</p>}
-        {mgr && <>
+        {mgr && stockOn && <>
           <h4 className="font-bold mt-4 mb-1">📦 Lô hàng còn tồn (xuất theo FIFO từ trên xuống)</h4>
           {d.data.lots.length ? d.data.lots.map(l => <div key={l.id} className="flex justify-between text-sm border-b py-1.5">
             <span>{l.lot_code} · {datetime(l.received_at)}</span><span><b>{num(l.qty_remaining, 3)}</b>/{qtyU(p, l.qty_in)} · {money(l.unit_cost)}/{su(p)}</span></div>) : <Empty icon="📦" text="Hết hàng" />}
@@ -215,8 +215,8 @@ function ProductView({ p, mgr, owner, onClose, onEdit, onChanged }) {
             <Button small color="gold" className="mt-2" onClick={doAdj} disabled={!Number(adj.qty) || !adj.reason.trim()}>Tạo phiếu điều chỉnh</Button>
           </div>
         </>}
-        <h4 className="font-bold mt-4 mb-1">📜 Biến động kho gần đây</h4>
-        <TxnList rows={d.data.txns} unit={() => su(p)} onDelAdj={owner ? async t => { await rpc('delete_stock_adjustment', { p_id: t.ref_id }); toast('Đã xóa phiếu điều chỉnh, kho đã trả lại'); d.reload(); onChanged(); } : null} />
+        {stockOn && <h4 className="font-bold mt-4 mb-1">📜 Biến động kho gần đây</h4>}
+        {stockOn && <TxnList rows={d.data.txns} unit={() => su(p)} onDelAdj={owner ? async t => { await rpc('delete_stock_adjustment', { p_id: t.ref_id }); toast('Đã xóa phiếu điều chỉnh, kho đã trả lại'); d.reload(); onChanged(); } : null} />}
         <div className="flex flex-wrap gap-2 mt-4">
           {mgr && <Button color="ghost" onClick={onEdit}>✏️ Sửa sản phẩm / giá</Button>}
           {owner && <DeleteButton title={`Xóa sản phẩm ${p.name}?`} label="🗑️ Xóa sản phẩm"

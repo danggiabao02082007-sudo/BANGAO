@@ -33,6 +33,26 @@ Trả hàng một phần, trả nợ NCC, báo cáo chi tiết + xuất Excel/PD
 6. Một transaction: mỗi nghiệp vụ là một hàm PostgreSQL; lỗi ở bất kỳ bước nào → hoàn tác toàn bộ.
 7. Sao lưu: xem mục "Chưa làm".
 
+## Quản lý tồn kho: ĐANG TẮT (từ 26/11/2026, theo yêu cầu chủ cửa hàng)
+
+Công tắc: cột `store_settings.track_stock` (migration `20261126000013_track_stock_switch.sql`).
+
+- **Đang tắt (`false`)**: bán không cần tồn kho, không trừ kho; nhập hàng không tạo lô nhưng vẫn ghi sổ quỹ, công nợ và **cập nhật giá nhập**.
+  Vốn = số lượng bán × giá nhập của mặt hàng, chốt lúc bán. Giao diện ẩn: tồn kho, nhập tồn đầu kỳ, lịch sử kho, đối soát, điều chỉnh kho, cảnh báo tồn thấp.
+- **Toàn bộ mã kho vẫn giữ nguyên**: lô FIFO, phiếu điều chỉnh, tồn đầu kỳ, đối soát, đơn vị kho (bao/kg/hủ/bịch…). Có 24 bài kiểm thử cho cả 2 chế độ (mục 18).
+
+### Bật lại quản lý tồn kho (khi chủ cửa hàng yêu cầu)
+1. Chạy (tài khoản chủ trong app gọi hàm, hoặc SQL Editor của Supabase):
+   ```sql
+   update public.store_settings set track_stock = true, updated_at = now() where id = 1;
+   -- hoặc từ app (đăng nhập chủ): rpc('set_track_stock', { p_on: true })
+   ```
+2. Tải lại app → mục "Sản phẩm" đổi lại thành "Sản phẩm & kho", hiện lại tồn kho.
+3. Vào **Sản phẩm & kho → 📥 Nhập tồn đầu kỳ** để nhập số đang có của từng mặt hàng. Mọi mặt hàng đang tồn 0,
+   vì lúc tắt kho, hàng bán ra và hàng nhập vào không làm đổi tồn kho.
+4. Từ đó app chặn bán quá tồn như cũ.
+5. (Tùy chọn) Có thể thêm nút bật/tắt trong Cài đặt cho chủ cửa hàng: hàm `set_track_stock` đã có sẵn, chỉ chủ gọi được.
+
 ## Cài đặt lên Supabase (làm 1 lần)
 1. Tạo project tại https://supabase.com (gói Free).
 2. **SQL Editor** → chạy lần lượt 3 file trong `supabase/migrations/` (theo thứ tự tên).

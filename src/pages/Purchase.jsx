@@ -30,7 +30,7 @@ export default function Purchase({ profile }) {
     try {
       const r = await rpc('create_purchase_receipt', { p: { supplier_id: sup || null, paid_amount: paidN, account_code: acc, note,
         items: calc.map(l => ({ product_id: l.product_id, unit_code: l.unit_code, quantity: l.qtyN, unit_price: Number(l.price) || 0 })) } });
-      toast(`Đã lưu phiếu ${r.receipt_code}, kho đã cộng thêm`); setLines([]); setPaid(null); setNote(''); hist.reload(); prods.reload();
+      toast(`Đã lưu phiếu ${r.receipt_code}${profile?.stock ? ", kho đã cộng thêm" : ", giá nhập đã cập nhật"}`); setLines([]); setPaid(null); setNote(''); hist.reload(); prods.reload();
     } catch (e) { toast(e.message, 'err'); }
     setBusy(false);
   };

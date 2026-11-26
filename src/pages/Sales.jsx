@@ -67,7 +67,7 @@ export default function Sales({ profile }) {
   const save = async () => {
     if (!lines.length) return toast('Chưa có sản phẩm trong giỏ', 'err');
     if (debt > 0 && !custId) return toast('Ghi nợ phải chọn khách hàng', 'err');
-    const over = lines.find(l => l.base > Number(l.p.stock_bao) + 1e-9);
+    const over = profile.stock && lines.find(l => l.base > Number(l.p.stock_bao) + 1e-9);
     if (over) return toast(`Không đủ tồn: ${over.p.name} còn ${qtyU(over.p, over.p.stock_bao)}`, 'err');
     const free = lines.find(l => l.priceN <= 0 && l.list <= 0);
     if (free) return toast(`"${free.p.name}" chưa có giá bán. Vào Sản phẩm để nhập giá.`, 'err');
@@ -104,7 +104,7 @@ export default function Sales({ profile }) {
         <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3 mt-3">
           {filtered.map(p => {
             const sell = p.units.filter(u => u.is_active);
-            const low = Number(p.min_stock) > 0 && Number(p.stock_bao) <= Number(p.min_stock), out = Number(p.stock_bao) <= 0;
+            const low = profile.stock && Number(p.min_stock) > 0 && Number(p.stock_bao) <= Number(p.min_stock), out = profile.stock && Number(p.stock_bao) <= 0;
             return (
               <div key={p.id} className="rounded-2xl ring-1 ring-ruong-100 bg-gradient-to-br from-white to-lua-50 p-3 flex flex-col">
                 <div className="flex items-start gap-2">
@@ -116,7 +116,7 @@ export default function Sales({ profile }) {
                   {sell.map(u => <div key={u.unit_code}>{unitLabel(u)}: <b className="text-ruong-700">{Number(priceOf(u, tier)) > 0 ? money(priceOf(u, tier)) : 'chưa có giá'}</b>
                     {u.unit_code === 'bao' && Number(priceOf(u, tier)) > 0 && <span className="text-[11px] text-slate-500"> ({money(priceOf(u, tier) / p.kg_per_bao)}/kg)</span>}</div>)}
                 </div>
-                <div className={cx('text-xs mt-1 font-semibold', low || out ? 'text-rose-600' : 'text-slate-600')}>Tồn: {qtyU(p, p.stock_bao, 2)}{low && ' ⚠️'}{out && ' · hết hàng'}</div>
+                {profile.stock && <div className={cx('text-xs mt-1 font-semibold', low || out ? 'text-rose-600' : 'text-slate-600')}>Tồn: {qtyU(p, p.stock_bao, 2)}{low && ' ⚠️'}{out && ' · hết hàng'}</div>}
                 <div className="flex gap-2 mt-auto pt-2">
                   {sell.map((u, i) => <Button key={u.unit_code} small color={i ? 'gold' : 'green'} onClick={() => add(p, u.unit_code)} disabled={out || Number(priceOf(u, tier)) <= 0} className="flex-1">+ {u.unit_name}</Button>)}
                 </div>
@@ -151,7 +151,7 @@ export default function Sales({ profile }) {
             {lines.map(l => (
               <div key={l.key} className="rounded-2xl bg-ruong-50 p-3">
                 <div className="flex gap-2 items-start">
-                  <div className="flex-1 font-bold leading-tight">{l.p?.name}<div className="text-xs font-normal text-slate-500">{l.p?.product_code}{suCode(l.p) === 'bao' && l.unit_code !== 'bao' ? ` · xuất ${num(l.base, 3)} bao` : ''}</div></div>
+                  <div className="flex-1 font-bold leading-tight">{l.p?.name}<div className="text-xs font-normal text-slate-500">{l.p?.product_code}{profile.stock && suCode(l.p) === 'bao' && l.unit_code !== 'bao' ? ` · xuất ${num(l.base, 3)} bao` : ''}</div></div>
                   <button onClick={() => setCart(c => c.filter(x => x.key !== l.key))} className="text-rose-500 font-bold px-1" aria-label="Xóa dòng">✕</button>
                 </div>
                 <div className="grid grid-cols-3 gap-2 mt-2">
@@ -165,7 +165,7 @@ export default function Sales({ profile }) {
                   <label className="text-xs flex-1">Giảm giá dòng<Input inputMode="numeric" value={l.disc} placeholder="0" onChange={e => upd(l.key, { disc: digits(e.target.value) })} className="!py-1.5" /></label>
                   <div className="text-right"><div className="text-xs text-slate-500">Thành tiền</div><b className="text-ruong-700">{money(l.total)}</b></div>
                 </div>
-                {l.base > Number(l.p?.stock_bao) && <p className="text-xs text-rose-600 font-bold mt-1">Vượt tồn ({qtyU(l.p, l.p.stock_bao)})</p>}
+                {profile.stock && l.base > Number(l.p?.stock_bao) && <p className="text-xs text-rose-600 font-bold mt-1">Vượt tồn ({qtyU(l.p, l.p.stock_bao)})</p>}
               </div>))}
             {!lines.length && <Empty icon="🧺" text="Bấm nút “+” ở mặt hàng để thêm vào giỏ" />}
           </div>

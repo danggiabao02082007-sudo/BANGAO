@@ -58,7 +58,7 @@ export default function Dashboard({ go, profile }) {
           grad={Number(d.real.real_profit) >= 0 ? 'from-teal-600 to-cyan-400' : 'from-rose-600 to-red-400'} />}
         <Stat icon="📒" label="Khách còn nợ" value={Number(d.receivable)} format={money} grad="from-pink-500 to-rose-400" />
         <Stat icon="🏭" label="Nợ nhà cung cấp" value={Number(d.payable)} format={money} grad="from-sky-600 to-cyan-400" />
-        <Stat icon="🧺" label="Tồn kho" value={Number(d.stock_items || 0)} format={v => num(v, 0) + ' mặt hàng còn hàng'} sub={`${num(d.stock_bao, 1)} bao · ≈ ${num(d.stock_kg, 0)} kg hàng cân${d.stock_value != null ? ' · giá trị ' + money(d.stock_value) : ''}`} grad="from-amber-500 to-yellow-400" />
+        {profile.stock && <Stat icon="🧺" label="Tồn kho" value={Number(d.stock_items || 0)} format={v => num(v, 0) + ' mặt hàng còn hàng'} sub={`${num(d.stock_bao, 1)} bao · ≈ ${num(d.stock_kg, 0)} kg hàng cân${d.stock_value != null ? ' · giá trị ' + money(d.stock_value) : ''}`} grad="from-amber-500 to-yellow-400" />}
       </div>
       <p className="text-xs text-slate-600 bg-white/80 rounded-xl px-3 py-2">ℹ️ Doanh thu, tiền thực thu và lợi nhuận là 3 chỉ tiêu riêng. Khách trả nợ cũ làm tăng <b>thực thu</b>, không làm tăng <b>doanh thu</b>. <b>Lợi nhuận thực</b> = doanh thu − tiền vốn − chi tiêu (điện, nước, vận chuyển…).</p>
       <div className="grid lg:grid-cols-2 gap-4">
@@ -76,12 +76,12 @@ export default function Dashboard({ go, profile }) {
               <b className="text-ruong-700">{money(p.revenue)}</b>
             </div>)) : <Empty text="Chưa có dữ liệu bán hàng" />}
         </Card>
-        <Card title="Cảnh báo tồn thấp" icon="⚠️" accent="from-orange-500 to-red-500">
+        {profile.stock && <Card title="Cảnh báo tồn thấp" icon="⚠️" accent="from-orange-500 to-red-500">
           {d.low_stock.length ? d.low_stock.map((p, i) => (
             <div key={i} className="flex justify-between py-2 border-b last:border-0"><span className="font-semibold">{p.name}</span>
               <span className="text-rose-600 font-bold">{num(p.qty, 2)} / {num(p.min, 2)} {(p.unit || 'Bao').toLowerCase()}</span></div>)) : <Empty icon="🌻" text="Không có sản phẩm nào dưới mức cảnh báo" />}
-        </Card>
-        <Card title="Công nợ cũ nhất cần thu" icon="📒" accent="from-pink-500 to-fuchsia-500" className="lg:col-span-2">
+        </Card>}
+        <Card title="Công nợ cũ nhất cần thu" icon="📒" accent="from-pink-500 to-fuchsia-500" className={profile.stock ? 'lg:col-span-2' : ''}>
           {d.debts_due.length ? d.debts_due.map(x => (
             <div key={x.invoice_code} className="flex justify-between py-2 border-b last:border-0 gap-2">
               <span><b>{x.customer_name}</b> <span className="text-xs text-slate-500">{x.invoice_code} · {date(x.day)}</span></span>
