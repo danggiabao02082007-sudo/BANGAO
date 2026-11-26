@@ -31,7 +31,7 @@ export default function Invoices({ profile }) {
       const n = await downloadXlsx(`bonbien-hoadon-${from}-den-${to}`, [
         { name: 'Hóa đơn', head: ['Mã HĐ', 'Ngày', 'Khách', 'Trạng thái', 'Tạm tính', 'Giảm giá', 'Tổng', 'Đã trả lúc mua', 'Còn nợ', 'Ghi chú'],
           rows: rows.map(i => [i.invoice_code, datetime(i.invoice_date), i.customer_name, i.status === 'cancelled' ? 'Đã hủy' : 'Hoàn thành', +i.subtotal, +i.discount, +i.total_amount, +i.paid_amount, +i.debt_remaining, i.note || '']) },
-        { name: 'Chi tiết hàng', head: ['Mã HĐ', 'Ngày', 'Mã hàng', 'Tên hàng', 'Số lượng', 'Đơn vị', 'Quy ra bao', 'Đơn giá', 'Giảm', 'Thành tiền'],
+        { name: 'Chi tiết hàng', head: ['Mã HĐ', 'Ngày', 'Mã hàng', 'Tên hàng', 'Số lượng', 'Đơn vị', 'Quy ra đơn vị tồn kho', 'Đơn giá', 'Giảm', 'Thành tiền'],
           rows: items.map(it => [code[it.invoice_id]?.invoice_code, datetime(code[it.invoice_id]?.invoice_date), it.product_code, it.product_name, +it.quantity, it.unit_name, +it.base_qty, +it.unit_price, +it.discount, +it.line_total]) }]);
       if (n) toast('Đã xuất ' + n);
     } catch (e) { toast(e.message, 'err'); }
@@ -103,7 +103,7 @@ export function InvoiceDetail({ id, profile, onClose, onChanged }) {
           {i.status === 'cancelled' && <p className="text-sm text-rose-600 mt-1">Lý do hủy: {i.cancel_reason} ({datetime(i.cancelled_at)})</p>}
           <div className="mt-3"><Table head={['Mã', 'Tên hàng', 'SL', { t: 'Đơn giá', r: 1 }, { t: 'Giảm', r: 1 }, { t: 'Thành tiền', r: 1 }]}>
             {items.map(it => <tr key={it.id}><td className="text-xs">{it.product_code}</td><td className="font-semibold">{it.product_name}</td>
-              <td>{num(it.quantity, 3)} {it.unit_name}<div className="text-[11px] text-slate-500">{num(it.base_qty, 3)} bao</div></td>
+              <td>{num(it.quantity, 3)} {it.unit_name}{Number(it.conversion_factor) !== 1 && <div className="text-[11px] text-slate-500">{num(it.base_qty, 3)} bao</div>}</td>
               <td className="text-right">{money(it.unit_price)}{Number(it.unit_price) !== Number(it.list_price) && <div className="text-[11px] text-lua-700">niêm yết {money(it.list_price)}</div>}</td>
               <td className="text-right">{money(it.discount)}</td><td className="text-right font-bold">{money(it.line_total)}</td></tr>)}
           </Table></div>

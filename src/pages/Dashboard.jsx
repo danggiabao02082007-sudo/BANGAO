@@ -54,11 +54,11 @@ export default function Dashboard({ go, profile }) {
         <Stat icon="💵" label="Tiền thực thu hôm nay" value={Number(d.cash_in_today)} format={money} sub="Gồm tiền bán + thu nợ, trừ hoàn tiền" grad="from-ruong-600 to-emerald-400" />
         {d.can_see_profit && <Stat icon="📈" label="Lợi nhuận hôm nay" value={Number(d.gross_profit_today)} format={money} sub="Doanh thu − tiền vốn" grad="from-violet-600 to-fuchsia-400" />}
         {d.real && <Stat icon="🏆" label="Lợi nhuận thực hôm nay" value={Number(d.real.real_profit)} format={money}
-          sub={`= ${money(d.real.revenue)} − vốn ${money(d.real.cost)} − chi ${money(d.real.expenses)}`}
+          sub={`= ${money(d.real.revenue)} − vốn ${money(d.real.cost)} − chi ${money(d.real.expenses)} − cố định ${money(d.real.fixed_costs)}`}
           grad={Number(d.real.real_profit) >= 0 ? 'from-teal-600 to-cyan-400' : 'from-rose-600 to-red-400'} />}
         <Stat icon="📒" label="Khách còn nợ" value={Number(d.receivable)} format={money} grad="from-pink-500 to-rose-400" />
         <Stat icon="🏭" label="Nợ nhà cung cấp" value={Number(d.payable)} format={money} grad="from-sky-600 to-cyan-400" />
-        <Stat icon="🧺" label="Tồn kho" value={Number(d.stock_bao)} format={v => num(v, 1) + ' bao'} sub={`≈ ${num(d.stock_kg, 0)} kg${d.stock_value != null ? ' · giá trị ' + money(d.stock_value) : ''}`} grad="from-amber-500 to-yellow-400" />
+        <Stat icon="🧺" label="Tồn kho" value={Number(d.stock_items || 0)} format={v => num(v, 0) + ' mặt hàng còn hàng'} sub={`${num(d.stock_bao, 1)} bao · ≈ ${num(d.stock_kg, 0)} kg hàng cân${d.stock_value != null ? ' · giá trị ' + money(d.stock_value) : ''}`} grad="from-amber-500 to-yellow-400" />
       </div>
       <p className="text-xs text-slate-600 bg-white/80 rounded-xl px-3 py-2">ℹ️ Doanh thu, tiền thực thu và lợi nhuận là 3 chỉ tiêu riêng. Khách trả nợ cũ làm tăng <b>thực thu</b>, không làm tăng <b>doanh thu</b>. <b>Lợi nhuận thực</b> = doanh thu − tiền vốn − chi tiêu (điện, nước, vận chuyển…).</p>
       <div className="grid lg:grid-cols-2 gap-4">
@@ -72,14 +72,14 @@ export default function Dashboard({ go, profile }) {
           {d.top_products.length ? d.top_products.map((p, i) => (
             <div key={i} className="flex items-center gap-3 py-2 border-b last:border-0">
               <span className="text-xl">{['🥇', '🥈', '🥉', '🎖️', '🏅'][i]}</span>
-              <div className="flex-1 font-semibold">{p.name}<div className="text-xs text-slate-500">{num(p.qty_bao, 2)} bao</div></div>
+              <div className="flex-1 font-semibold">{p.name}<div className="text-xs text-slate-500">{num(p.qty_bao, 2)} {(p.unit || 'Bao').toLowerCase()}</div></div>
               <b className="text-ruong-700">{money(p.revenue)}</b>
             </div>)) : <Empty text="Chưa có dữ liệu bán hàng" />}
         </Card>
         <Card title="Cảnh báo tồn thấp" icon="⚠️" accent="from-orange-500 to-red-500">
           {d.low_stock.length ? d.low_stock.map((p, i) => (
             <div key={i} className="flex justify-between py-2 border-b last:border-0"><span className="font-semibold">{p.name}</span>
-              <span className="text-rose-600 font-bold">{num(p.qty, 2)} / {num(p.min, 2)} bao</span></div>)) : <Empty icon="🌻" text="Không có sản phẩm nào dưới mức cảnh báo" />}
+              <span className="text-rose-600 font-bold">{num(p.qty, 2)} / {num(p.min, 2)} {(p.unit || 'Bao').toLowerCase()}</span></div>)) : <Empty icon="🌻" text="Không có sản phẩm nào dưới mức cảnh báo" />}
         </Card>
         <Card title="Công nợ cũ nhất cần thu" icon="📒" accent="from-pink-500 to-fuchsia-500" className="lg:col-span-2">
           {d.debts_due.length ? d.debts_due.map(x => (

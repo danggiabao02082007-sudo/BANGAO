@@ -41,6 +41,7 @@ export default function Expenses({ profile }) {
 
   return (
     <div className="space-y-4">
+      <FixedCosts />
       <Card title="Chi tiêu phát sinh" icon="💸" accent="from-orange-500 to-rose-500"
         right={<Button small color="ghost" onClick={() => setForm(blank())}>＋ Thêm khoản chi</Button>}>
         <div className="grid grid-cols-2 gap-2">
@@ -105,5 +106,64 @@ export default function Expenses({ profile }) {
             <Button color="rose" className="flex-1" onClick={remove}>🗑️ Xóa</Button></div>
         </Modal>)}
     </div>
+  );
+}
+
+// CHI PHÍ CỐ ĐỊNH MỖI NGÀY: tự trừ vào lợi nhuận thực từng ngày (không ghi vào sổ quỹ vì không chi tiền mỗi ngày)
+function FixedCosts() {
+  const toast = useToast();
+  const today = isoDay();
+  const list = useLoad(() => q(supabase.from('fixed_costs').select('*').or(`end_date.is.null,end_date.gte.${today}`).order('sort').order('created_at')), []);
+  const [form, setForm] = useState(null); const [stop, setStop] = useState(null); const [busy, setBusy] = useState(false);
+  const rows = (list.data || []).filter(x => x.start_date <= today);
+  const later = (list.data || []).filter(x => x.start_date > today);
+  const total = rows.reduce((a, x) => a + Number(x.amount_per_day), 0);
+  const save = async e => {
+    e.preventDefault(); setBusy(true);
+    try { await rpc('save_fixed_cost', { p: { ...form, amount_per_day: Number(form.amount_per_day) } }); toast('Đã lưu chi phí cố định'); setForm(null); list.reload(); }
+    catch (er) { toast(er.message, 'err'); }
+    setBusy(false);
+  };
+  const doStop = async () => {
+    try { await rpc('stop_fixed_cost', { p_id: stop.id }); toast('Đã ngừng tính khoản này từ hôm nay'); setStop(null); list.reload(); }
+    catch (er) { toast(er.message, 'err'); }
+  };
+  return (
+    <Card title="Chi phí cố định mỗi ngày" icon="🏠" accent="from-teal-600 to-emerald-500"
+      right={<Button small color="ghost" onClick={() => setForm({ name: '', amount_per_day: '', note: '', start_date: today })}>＋ Thêm</Button>}>
+      <p className="text-sm text-slate-600">Thuê nhà, lương, điện… App tự trừ mỗi ngày vào <b>lợi nhuận thực</b>. Không ghi vào sổ quỹ (vì không chi tiền mỗi ngày). Khi trả lương hay tiền nhà thật, <b>đừng nhập lại</b> ở “Chi tiêu phát sinh” để khỏi trừ 2 lần.</p>
+      {list.loading ? <Loading /> : list.error ? <ErrorBox error={list.error} /> : <>
+        <div className="mt-3 divide-y">
+          {rows.map(x => (
+            <div key={x.id} className="flex items-center gap-2 py-2">
+              <div className="flex-1 min-w-0"><div className="font-bold">{x.name}</div>
+                <div className="text-xs text-slate-500">{x.note}{x.note && ' · '}tính từ {date(x.start_date)}</div></div>
+              <b className="text-teal-700 whitespace-nowrap">{money(x.amount_per_day)}/ngày</b>
+              <button onClick={() => setForm({ id: x.id, name: x.name, amount_per_day: String(Math.round(x.amount_per_day)), note: x.note })} className="w-9 h-9 rounded-full bg-sky-100 text-sky-700" aria-label="Sửa">✏️</button>
+              <button onClick={() => setStop(x)} className="w-9 h-9 rounded-full bg-rose-100 text-rose-600" aria-label="Ngừng">⏹️</button>
+            </div>))}
+          {later.map(x => <div key={x.id} className="py-2 text-sm text-slate-500">{x.name} · {money(x.amount_per_day)}/ngày · bắt đầu {date(x.start_date)}</div>)}
+          {!rows.length && !later.length && <Empty icon="🏠" text="Chưa có chi phí cố định" />}
+        </div>
+        <div className="mt-2 rounded-2xl p-3 text-white bg-gradient-to-r from-teal-600 to-emerald-500 flex justify-between items-center">
+          <span className="font-bold">Tổng mỗi ngày</span><span className="text-xl font-extrabold">{money(total)}</span></div>
+        <p className="text-xs text-slate-500 mt-1">≈ {money(total * 30)}/30 ngày.</p>
+      </>}
+      {form && <Modal title={form.id ? 'Sửa chi phí cố định' : 'Thêm chi phí cố định'} onClose={() => setForm(null)}>
+        <form onSubmit={save} className="space-y-3">
+          <Field label="Tên khoản *"><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required placeholder="vd: Tiền thuê mặt bằng" /></Field>
+          <Field label="Số tiền mỗi ngày (đ) *"><Input inputMode="numeric" value={form.amount_per_day} onChange={e => setForm({ ...form, amount_per_day: digits(e.target.value) })} required /></Field>
+          <Field label="Ghi chú"><Input value={form.note} onChange={e => setForm({ ...form, note: e.target.value })} placeholder="vd: 1 tháng 6.000.000" /></Field>
+          {!form.id && <Field label="Tính từ ngày"><Input type="date" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} /></Field>}
+          {form.id && <p className="text-xs text-slate-500">Đổi số tiền: áp dụng từ hôm nay, các ngày trước giữ số cũ.</p>}
+          <Button className="w-full" color="green" disabled={busy || !form.name.trim() || !Number(form.amount_per_day)}>💾 Lưu</Button>
+        </form></Modal>}
+      {stop && <Modal title="Ngừng khoản chi phí này?" onClose={() => setStop(null)}>
+        <p><b>{stop.name}</b> · {money(stop.amount_per_day)}/ngày</p>
+        <p className="text-sm text-slate-500 mt-1">Từ hôm nay không trừ khoản này nữa. Lợi nhuận các ngày trước vẫn giữ nguyên.</p>
+        <div className="flex gap-2 mt-4"><Button color="ghost" className="flex-1" onClick={() => setStop(null)}>Không</Button>
+          <Button color="rose" className="flex-1" onClick={doStop}>⏹️ Ngừng</Button></div>
+      </Modal>}
+    </Card>
   );
 }

@@ -21,7 +21,7 @@ const res = []; const ok = (c, m) => { res.push([c, m]); console.log(c ? '  ✔'
   const p = await login({ ...devices['iPhone 13'] }, 'chu@test.vn');
   // Tạo 1 hóa đơn rồi xóa
   await p.goto('http://localhost:8778/#sales'); await p.waitForSelector('text=Chọn hàng'); await p.waitForTimeout(500);
-  await p.locator('button:has-text("+ Bao")').first().click();
+  await p.locator('button:has-text("+ Bao"):not([disabled])').first().click();
   await p.locator('button:has-text("Lưu hóa đơn")').first().click();
   await p.waitForSelector('text=Đã lưu hóa đơn', { timeout: 10000 });
   const code = (await p.locator('text=/HD\\d{6}/').first().innerText()).match(/HD\d{6}/)[0];

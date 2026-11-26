@@ -212,7 +212,7 @@ ok(bs.last_backup_at === null && bs.has_data === true, 'Chưa sao lưu lần nà
 const bk = await owner.rpc('export_backup');
 ok(!bk.error, 'Chủ xuất được sao lưu ' + (bk.error?.message || ''));
 const T = bk.data.tables;
-ok(bk.data.meta.format === 'bangao-backup-v1' && Object.keys(T).length === 31, 'Đủ 31 bảng trong file sao lưu');
+ok(bk.data.meta.format === 'bangao-backup-v1' && Object.keys(T).length === 32, 'Đủ 32 bảng trong file sao lưu (gồm chi phí cố định)');
 const realInv = (await owner.from('sales_invoices').select('id', { count: 'exact', head: true })).count;
 eq(T.sales_invoices.length, realInv, 'Số hóa đơn trong sao lưu = số hóa đơn thật');
 ok(T.products.every(p => 'cost_price' in p), 'Sao lưu có cả giá nhập (cột ẩn với nhân viên)');
@@ -440,6 +440,89 @@ await rpc(owner, 'reset_business_data', { p_confirm: 'XÓA TẤT CẢ', p_scope:
 r = await rpc(owner, 'restore_backup', { p: bk2 });
 ok(!r.error, 'Khôi phục được cả khi chỉ xóa giao dịch (giữ danh mục) ' + (r.error || ''));
 eq(await cnt('sales_invoices', {}), before.sales_invoices.length, 'Số hóa đơn đúng như file');
+
+console.log('\n17. Đơn vị kho linh hoạt (kg, hủ, bịch), chi phí cố định, tồn đầu kỳ');
+const { data: cats2 } = await owner.from('categories').select('*');
+const hh = cats2.find(c => c.name === 'Hàng hóa')?.id;
+ok(!!hh, 'Có nhóm "Hàng hóa"');
+// Gộp cặp: bán lẻ kg + bán nguyên bao 25kg, chung tồn kho
+r = await rpc(owner, 'save_product', { p: { product_code: 'TST001', name: 'Gạo thử A', category_id: hh, stock_unit: 'bao', kg_per_bao: 25, cost_price: 8000 * 25,
+  units: [{ unit_code: 'bao', retail_price: 240000, wholesale_price: 240000, label: 'Gạo thử A bao' }, { unit_code: 'kg', retail_price: 10000, wholesale_price: 10000 }] } });
+ok(!r.error, 'Tạo "Gạo thử A" (kg 10.000 + bao 25kg 240.000) ' + (r.error || ''));
+const b4 = r.data.id;
+// Hàng chỉ bán kg
+r = await rpc(owner, 'save_product', { p: { product_code: 'TST002', name: 'Gạo thử B', category_id: hh, stock_unit: 'kg', cost_price: 9000,
+  units: [{ unit_code: 'kg', retail_price: 11500, wholesale_price: 11500 }] } });
+ok(!r.error, 'Tạo "Gạo thử B" tính kho theo kg ' + (r.error || ''));
+const b5 = r.data.id;
+// Hàng đếm cái
+r = await rpc(owner, 'save_product', { p: { product_code: 'TST003', name: 'Cám thử C', category_id: hh, stock_unit: 'hu', cost_price: 28000,
+  units: [{ unit_code: 'hu', retail_price: 33000, wholesale_price: 33000 }] } });
+ok(!r.error, 'Tạo "Cám thử C" tính kho theo hủ ' + (r.error || ''));
+const cc = r.data.id;
+r = await rpc(owner, 'save_product', { p: { name: 'Sai đơn vị', category_id: hh, stock_unit: 'hu', units: [{ unit_code: 'kg', retail_price: 1 }] } });
+ok(r.error?.includes('không dùng được'), 'Hàng tính theo hủ không gắn đơn vị kg được');
+r = await rpc(owner, 'save_product', { p: { product_code: 'TST004', name: 'Gạo thử D', category_id: hh, stock_unit: 'bao', kg_per_bao: 25, cost_price: 8000 * 25,
+  units: [{ unit_code: 'bao', retail_price: 240000, wholesale_price: 240000, label: 'Gạo thử D bao' }, { unit_code: 'kg', retail_price: 0, wholesale_price: 0, is_active: false }] } });
+const b2 = r.data.id;
+const vp2 = (await owner.from('v_products').select('*').in('id', [b4, b5, cc])).data;
+const V = id => vp2.find(x => x.id === id);
+ok(V(b5).stock_unit_name === 'Kg' && V(b5).weighed && V(cc).stock_unit_name === 'Hủ' && !V(cc).weighed, 'Xem sản phẩm có đơn vị tồn kho và cờ "cân"');
+ok(V(b4).units.find(u => u.unit_code === 'bao').label === 'Gạo thử A bao', 'Nhãn đơn vị bao giữ tên riêng');
+// Tồn đầu kỳ
+r = await rpc(staff, 'create_opening_stock', { p_items: [{ product_id: b4, quantity: 1 }] });
+ok(r.error?.includes('không có quyền'), 'Nhân viên không nhập tồn đầu kỳ được');
+r = await rpc(owner, 'create_opening_stock', { p_items: [{ product_id: b4, quantity: 4 }, { product_id: b5, quantity: 50.5 }, { product_id: cc, quantity: 12 }, { product_id: b2, quantity: 0 }] });
+ok(!r.error && r.data.count === 3, 'Nhập tồn đầu kỳ 3 mặt hàng ' + (r.error || JSON.stringify(r.data)));
+eq(await qty(b4), 4, 'Hàng bao tồn 4 bao'); eq(await qty(b5), 50.5, 'Hàng kg tồn 50,5 kg'); eq(await qty(cc), 12, 'Hàng hủ tồn 12 hủ');
+const lot5 = (await owner.from('inventory_lots').select('unit_cost').eq('product_id', b5).single()).data;
+eq(lot5.unit_cost, 9000, 'Lô tồn đầu kỳ lấy giá nhập hiện hành (9.000/kg)');
+// Bán: lẻ kg từ hàng bao, kg từ hàng kg, hủ
+r = await rpc(owner, 'create_sales_invoice', { p: { items: [{ product_id: b4, unit_code: 'kg', quantity: 5 }, { product_id: b4, unit_code: 'bao', quantity: 1 },
+  { product_id: b5, unit_code: 'kg', quantity: 2.5 }, { product_id: cc, unit_code: 'hu', quantity: 3 }], paid_amount: 10000000 } });
+ok(!r.error, 'Bán 5 kg + 1 bao hàng bao, 2,5 kg hàng kg, 3 hủ ' + (r.error || ''));
+const invU = r.data;
+eq(invU.total_amount, 5 * 10000 + 240000 + 2.5 * 11500 + 3 * 33000, 'Tổng tiền đúng theo từng đơn vị');
+eq(await qty(b4), 4 - 1 - 0.2, 'Hàng bao còn 2,8 bao (trừ 1 bao + 5 kg = 0,2 bao)');
+eq(await qty(b5), 48, 'Hàng kg còn 48 kg'); eq(await qty(cc), 9, 'Hàng hủ còn 9 hủ');
+const costs = (await admin.from('sales_item_costs').select('cost, sales_invoice_items!inner(invoice_id, product_id, unit_name)').eq('sales_invoice_items.invoice_id', invU.id)).data;
+eq(costs.reduce((a, c) => a + Number(c.cost), 0), 5 * 8000 + 25 * 8000 + 2.5 * 9000 + 3 * 28000, 'Vốn = kg × giá nhập/kg (hàng cân) + số hủ × giá nhập/hủ');
+r = await rpc(owner, 'create_sales_invoice', { p: { items: [{ product_id: cc, unit_code: 'hu', quantity: 20 }], paid_amount: 0 } });
+ok(r.error?.includes('Không đủ tồn'), 'Bán quá tồn bị chặn (hàng đếm hủ)');
+await rpc(owner, 'create_opening_stock', { p_items: [{ product_id: b2, quantity: 2 }] });
+r = await rpc(owner, 'save_product', { p: { id: b2, product_code: 'TST004', name: 'Gạo thử D', category_id: hh, stock_unit: 'bao', kg_per_bao: 25,
+  units: [{ unit_code: 'bao', retail_price: 0, wholesale_price: 0, label: 'Gạo thử D bao' }] } });
+r = await rpc(owner, 'create_sales_invoice', { p: { items: [{ product_id: b2, unit_code: 'bao', quantity: 1 }], paid_amount: 0 } });
+ok(r.error?.includes('chưa có giá bán'), 'Mặt hàng chưa có giá bán: không bán ở giá 0');
+r = await rpc(owner, 'save_product', { p: { id: cc, product_code: 'TST003', name: 'Cám thử C', category_id: hh, stock_unit: 'kg', units: [{ unit_code: 'kg', retail_price: 1 }] } });
+ok(r.error?.includes('phát sinh kho'), 'Đã có phát sinh kho thì không đổi đơn vị tồn kho');
+const { data: rec5 } = await owner.rpc('reconcile_inventory');
+ok(rec5.length === 0, 'Đối soát kho khớp với hàng kg/hủ');
+const dsU = (await owner.rpc('dashboard_summary')).data;
+ok(dsU.stock_items >= 3 && Number.isFinite(Number(dsU.stock_kg)), 'Tổng quan có số mặt hàng còn hàng');
+
+// Chi phí cố định
+r = await rpc(staff, 'save_fixed_cost', { p: { name: 'x', amount_per_day: 1 } });
+ok(r.error?.includes('không có quyền'), 'Nhân viên không sửa chi phí cố định được');
+const fc = [['Thuê mặt bằng (thử)', 285000], ['Lương nhân viên A (thử)', 300000]];
+const fcIds = [];
+for (const [n, a] of fc) { r = await rpc(owner, 'save_fixed_cost', { p: { name: n, amount_per_day: a, note: '', start_date: '2026-11-01' } }); fcIds.push(r.data.id); }
+const rpF = (await owner.rpc('real_profit_report', { p_from: day, p_to: day })).data[0];
+eq(rpF.fixed_costs, 585000, 'Chi phí cố định hôm nay = 585.000');
+eq(rpF.real_profit, Number(rpF.revenue) - Number(rpF.cost) - Number(rpF.expenses) - 585000, 'Lợi nhuận thực = DT − vốn − chi tiêu − chi phí cố định');
+const past = (await owner.rpc('real_profit_report', { p_from: '2026-11-05', p_to: '2026-11-05' })).data[0];
+eq(past.fixed_costs, 585000, 'Ngày 05/11 cũng trừ chi phí cố định (bắt đầu 01/11)');
+eq((await owner.rpc('real_profit_report', { p_from: '2026-10-31', p_to: '2026-10-31' })).data[0].fixed_costs, 0, 'Trước ngày bắt đầu: không trừ');
+r = await rpc(owner, 'save_fixed_cost', { p: { id: fcIds[1], name: 'Lương nhân viên A (thử)', amount_per_day: 350000 } });
+ok(!r.error && r.data.id !== fcIds[1], 'Sửa số tiền khoản đã chạy: tạo khoản mới từ hôm nay');
+eq((await owner.rpc('real_profit_report', { p_from: '2026-11-05', p_to: '2026-11-05' })).data[0].fixed_costs, 585000, 'Ngày cũ giữ số cũ (585.000)');
+eq((await owner.rpc('real_profit_report', { p_from: day, p_to: day })).data[0].fixed_costs, 635000, 'Hôm nay theo số mới (635.000)');
+r = await rpc(owner, 'stop_fixed_cost', { p_id: fcIds[0] });
+eq((await owner.rpc('real_profit_report', { p_from: day, p_to: day })).data[0].fixed_costs, 350000, 'Ngừng tiền thuê: hôm nay chỉ còn 350.000');
+eq((await owner.rpc('real_profit_report', { p_from: '2026-11-05', p_to: '2026-11-05' })).data[0].fixed_costs, 585000, 'Ngừng không làm đổi ngày cũ');
+ok((await staff.from('fixed_costs').select('id')).data.length === 0, 'Nhân viên không xem được chi phí cố định');
+const bk3 = (await owner.rpc('export_backup')).data;
+ok(bk3.tables.fixed_costs.length >= 3, 'Sao lưu có bảng chi phí cố định');
 
 console.log(`\nKẾT QUẢ: ${pass} đạt, ${fail} lỗi`);
 process.exit(fail ? 1 : 0);

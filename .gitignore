@@ -4,3 +4,6 @@ supabase/.temp/
 supabase/.branches/
 .env*
 saoluu-*.json
+
+# Dữ liệu kinh doanh thật (giá nhập, lương nhân viên): KHÔNG đưa lên repo công khai
+data/

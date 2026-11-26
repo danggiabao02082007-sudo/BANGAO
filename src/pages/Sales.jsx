@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { supabase, rpc, q } from '../lib/supabase.js';
-import { money, num, digits } from '../lib/format.js';
+import { money, num, digits, su, suCode, qtyU, unitLabel } from '../lib/format.js';
 import { Card, Button, Input, Select, Modal, Badge, Empty, Loading, ErrorBox, useLoad, useToast, cx, Field } from '../components/ui.jsx';
 import PrintInvoice from '../components/Print.jsx';
 import { CustomerForm } from './Customers.jsx';
@@ -47,8 +47,8 @@ export default function Sales({ profile }) {
       (!s || p.name.toLowerCase().includes(s) || p.product_code.toLowerCase().includes(s) || (p.barcode || '').toLowerCase() === s));
   }, [prods.data, search, cat]);
 
-  const add = (p, unit = 'bao') => {
-    const u = p.units.find(x => x.unit_code === unit && x.is_active) || p.units.find(x => x.is_active);
+  const add = (p, unit) => {
+    const u = p.units.find(x => x.unit_code === (unit || suCode(p)) && x.is_active) || p.units.find(x => x.is_active);
     if (!u) return toast('Sản phẩm chưa có đơn vị bán', 'err');
     setCart(c => {
       const i = c.findIndex(x => x.product_id === p.id && x.unit_code === u.unit_code);
@@ -68,7 +68,9 @@ export default function Sales({ profile }) {
     if (!lines.length) return toast('Chưa có sản phẩm trong giỏ', 'err');
     if (debt > 0 && !custId) return toast('Ghi nợ phải chọn khách hàng', 'err');
     const over = lines.find(l => l.base > Number(l.p.stock_bao) + 1e-9);
-    if (over) return toast(`Không đủ tồn: ${over.p.name} còn ${num(over.p.stock_bao, 3)} bao`, 'err');
+    if (over) return toast(`Không đủ tồn: ${over.p.name} còn ${qtyU(over.p, over.p.stock_bao)}`, 'err');
+    const free = lines.find(l => l.priceN <= 0 && l.list <= 0);
+    if (free) return toast(`"${free.p.name}" chưa có giá bán. Vào Sản phẩm để nhập giá.`, 'err');
     setBusy(true);
     try {
       const r = await rpc('create_sales_invoice', { p: {
@@ -101,23 +103,22 @@ export default function Sales({ profile }) {
         </div>
         <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3 mt-3">
           {filtered.map(p => {
-            const bao = p.units.find(u => u.unit_code === 'bao'), kg = p.units.find(u => u.unit_code === 'kg' && u.is_active);
-            const low = Number(p.stock_bao) <= Number(p.min_stock);
+            const sell = p.units.filter(u => u.is_active);
+            const low = Number(p.min_stock) > 0 && Number(p.stock_bao) <= Number(p.min_stock), out = Number(p.stock_bao) <= 0;
             return (
               <div key={p.id} className="rounded-2xl ring-1 ring-ruong-100 bg-gradient-to-br from-white to-lua-50 p-3 flex flex-col">
                 <div className="flex items-start gap-2">
                   <span className="text-2xl">{p.emoji}</span>
                   <div className="flex-1 min-w-0"><div className="font-bold leading-tight">{p.name}</div>
-                    <div className="text-xs text-slate-500">{p.product_code} · bao {num(p.kg_per_bao, 1)} kg</div></div>
+                    <div className="text-xs text-slate-500">{p.product_code} · {suCode(p) === 'bao' ? `bao ${num(p.kg_per_bao, 1)} kg` : `bán theo ${su(p)}`}</div></div>
                 </div>
-                <div className="text-sm mt-2">
-                  {bao && <div>Bao: <b className="text-ruong-700">{money(priceOf(bao, tier))}</b></div>}
-                  {kg && <div>Kg: <b className="text-ruong-700">{money(priceOf(kg, tier))}</b></div>}
+                <div className="text-sm mt-2 space-y-0.5">
+                  {sell.map(u => <div key={u.unit_code}>{unitLabel(u)}: <b className="text-ruong-700">{Number(priceOf(u, tier)) > 0 ? money(priceOf(u, tier)) : 'chưa có giá'}</b>
+                    {u.unit_code === 'bao' && Number(priceOf(u, tier)) > 0 && <span className="text-[11px] text-slate-500"> ({money(priceOf(u, tier) / p.kg_per_bao)}/kg)</span>}</div>)}
                 </div>
-                <div className={cx('text-xs mt-1 font-semibold', low ? 'text-rose-600' : 'text-slate-600')}>Tồn: {num(p.stock_bao, 2)} bao{low && ' ⚠️'}</div>
-                <div className="flex gap-2 mt-2">
-                  <Button small onClick={() => add(p, 'bao')} disabled={Number(p.stock_bao) <= 0} className="flex-1">+ Bao</Button>
-                  {kg && <Button small color="gold" onClick={() => add(p, 'kg')} disabled={Number(p.stock_bao) <= 0} className="flex-1">+ Kg</Button>}
+                <div className={cx('text-xs mt-1 font-semibold', low || out ? 'text-rose-600' : 'text-slate-600')}>Tồn: {qtyU(p, p.stock_bao, 2)}{low && ' ⚠️'}{out && ' · hết hàng'}</div>
+                <div className="flex gap-2 mt-auto pt-2">
+                  {sell.map((u, i) => <Button key={u.unit_code} small color={i ? 'gold' : 'green'} onClick={() => add(p, u.unit_code)} disabled={out || Number(priceOf(u, tier)) <= 0} className="flex-1">+ {u.unit_name}</Button>)}
                 </div>
               </div>);
           })}
@@ -150,13 +151,13 @@ export default function Sales({ profile }) {
             {lines.map(l => (
               <div key={l.key} className="rounded-2xl bg-ruong-50 p-3">
                 <div className="flex gap-2 items-start">
-                  <div className="flex-1 font-bold leading-tight">{l.p?.name}<div className="text-xs font-normal text-slate-500">{l.p?.product_code} · xuất {num(l.base, 3)} bao</div></div>
+                  <div className="flex-1 font-bold leading-tight">{l.p?.name}<div className="text-xs font-normal text-slate-500">{l.p?.product_code}{suCode(l.p) === 'bao' && l.unit_code !== 'bao' ? ` · xuất ${num(l.base, 3)} bao` : ''}</div></div>
                   <button onClick={() => setCart(c => c.filter(x => x.key !== l.key))} className="text-rose-500 font-bold px-1" aria-label="Xóa dòng">✕</button>
                 </div>
                 <div className="grid grid-cols-3 gap-2 mt-2">
                   <label className="text-xs">SL<Input inputMode="decimal" value={l.qty} onChange={e => upd(l.key, { qty: e.target.value.replace(',', '.').replace(/[^\d.]/g, '') })} className="!py-1.5" /></label>
                   <label className="text-xs">Đơn vị<Select value={l.unit_code} onChange={e => upd(l.key, { unit_code: e.target.value, price: null })} className="!py-1.5">
-                    {l.p?.units.filter(u => u.is_active).map(u => <option key={u.unit_code} value={u.unit_code}>{u.unit_name}</option>)}</Select></label>
+                    {l.p?.units.filter(u => u.is_active).map(u => <option key={u.unit_code} value={u.unit_code}>{unitLabel(u)}</option>)}</Select></label>
                   <label className="text-xs">Đơn giá (đ)<Input inputMode="numeric" disabled={!canPrice} value={l.price == null ? l.list : l.price} placeholder={String(l.list)}
                     onChange={e => upd(l.key, { price: digits(e.target.value) })} className="!py-1.5" /></label>
                 </div>
@@ -164,9 +165,9 @@ export default function Sales({ profile }) {
                   <label className="text-xs flex-1">Giảm giá dòng<Input inputMode="numeric" value={l.disc} placeholder="0" onChange={e => upd(l.key, { disc: digits(e.target.value) })} className="!py-1.5" /></label>
                   <div className="text-right"><div className="text-xs text-slate-500">Thành tiền</div><b className="text-ruong-700">{money(l.total)}</b></div>
                 </div>
-                {l.base > Number(l.p?.stock_bao) && <p className="text-xs text-rose-600 font-bold mt-1">Vượt tồn ({num(l.p.stock_bao, 3)} bao)</p>}
+                {l.base > Number(l.p?.stock_bao) && <p className="text-xs text-rose-600 font-bold mt-1">Vượt tồn ({qtyU(l.p, l.p.stock_bao)})</p>}
               </div>))}
-            {!lines.length && <Empty icon="🧺" text="Bấm “+ Bao” hoặc “+ Kg” để thêm hàng" />}
+            {!lines.length && <Empty icon="🧺" text="Bấm nút “+” ở mặt hàng để thêm vào giỏ" />}
           </div>
         </Card>
 

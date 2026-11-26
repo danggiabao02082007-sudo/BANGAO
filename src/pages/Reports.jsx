@@ -16,17 +16,17 @@ export default function Reports() {
   const mFrom = day.slice(0, 8) + '01', mTo = lastDay(day) > today && day.slice(0, 7) === today.slice(0, 7) ? today : lastDay(day);
   const month = useLoad(() => rpc('real_profit_report', { p_from: mFrom, p_to: mTo }), [mFrom, mTo]);
   const detail = useLoad(() => rpc('daily_cost_detail', { p_day: day }), [day]);
-  const sel0 = month.data?.find(r => r.day === day) || { revenue: 0, cost: 0, expenses: 0, gross_profit: 0, real_profit: 0, invoices: 0 };
+  const sel0 = month.data?.find(r => r.day === day) || { revenue: 0, cost: 0, expenses: 0, gross_profit: 0, real_profit: 0, invoices: 0, fixed_costs: 0 };
   const sel = { ...sel0, profit: sel0.gross_profit };
   const sum = k => (month.data || []).reduce((a, r) => a + Number(r[k]), 0);
   const toast = useToast();
   const exportXlsx = async () => {
     try {
-      const rows = (month.data || []).map(r => [date(r.day), N(r.invoices), N(r.revenue), N(r.cost), N(r.expenses), N(r.gross_profit), N(r.real_profit)]);
-      rows.push(['TỔNG THÁNG', sum('invoices'), sum('revenue'), sum('cost'), sum('expenses'), sum('gross_profit'), sum('real_profit')]);
-      const det = (detail.data || []).map(r => [r.product_code, r.product_name, N(r.kg_sold), N(r.cost_per_kg), N(r.cost), N(r.revenue), N(r.revenue) - N(r.cost)]);
-      const sheets = [{ name: `Tháng ${day.slice(5, 7)}-${day.slice(0, 4)}`, head: ['Ngày', 'Số hóa đơn', 'Doanh thu', 'Vốn', 'Chi tiêu', 'Lợi nhuận (DT − vốn)', 'Lợi nhuận thực (DT − vốn − chi)'], rows }];
-      if (det.length) sheets.push({ name: `Vốn ngày ${day.slice(8, 10)}-${day.slice(5, 7)}`, head: ['Mã hàng', 'Tên hàng', 'Kg bán', 'Giá nhập/kg', 'Vốn', 'Doanh thu', 'Lợi nhuận'], rows: det });
+      const rows = (month.data || []).map(r => [date(r.day), N(r.invoices), N(r.revenue), N(r.cost), N(r.expenses), N(r.fixed_costs), N(r.gross_profit), N(r.real_profit)]);
+      rows.push(['TỔNG THÁNG', sum('invoices'), sum('revenue'), sum('cost'), sum('expenses'), sum('fixed_costs'), sum('gross_profit'), sum('real_profit')]);
+      const det = (detail.data || []).map(r => [r.product_code, r.product_name, N(r.kg_sold), r.unit || 'kg', N(r.cost_per_kg), N(r.cost), N(r.revenue), N(r.revenue) - N(r.cost)]);
+      const sheets = [{ name: `Tháng ${day.slice(5, 7)}-${day.slice(0, 4)}`, head: ['Ngày', 'Số hóa đơn', 'Doanh thu', 'Vốn', 'Chi tiêu', 'Chi phí cố định', 'Lợi nhuận (DT − vốn)', 'Lợi nhuận thực (DT − vốn − chi tiêu − cố định)'], rows }];
+      if (det.length) sheets.push({ name: `Vốn ngày ${day.slice(8, 10)}-${day.slice(5, 7)}`, head: ['Mã hàng', 'Tên hàng', 'Số lượng bán', 'Đơn vị', 'Giá nhập/đơn vị', 'Vốn', 'Doanh thu', 'Lợi nhuận'], rows: det });
       const n = await downloadXlsx(`bonbien-loinhuan-${day.slice(0, 7)}`, sheets); if (n) toast('Đã xuất ' + n);
     } catch (e) { toast(e.message, 'err'); }
   };
@@ -63,7 +63,7 @@ export default function Reports() {
           <div className="absolute -right-2 -bottom-4 text-7xl opacity-25">🏆</div>
           <div className="font-bold">Lợi nhuận thực ngày {date(day)}</div>
           <div className="text-3xl font-extrabold mt-1">{money(sel.real_profit)}</div>
-          <div className="text-sm opacity-95 mt-1">= Doanh thu {money(sel.revenue)} − Vốn {money(sel.cost)} − Chi tiêu {money(sel.expenses)}</div>
+          <div className="text-sm opacity-95 mt-1">= Doanh thu {money(sel.revenue)} − Vốn {money(sel.cost)} − Chi tiêu {money(sel.expenses)} − Chi phí cố định {money(sel.fixed_costs)}</div>
         </div>
 
         <Card title={`Chi tiết tiền vốn ngày ${date(day)}`} icon="🧮" accent="from-violet-500 to-fuchsia-500" bodyClass="p-0">
@@ -72,13 +72,13 @@ export default function Reports() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm min-w-[480px]">
                 <thead><tr className="text-left text-slate-500 border-b">
-                  <th className="px-4 py-2">Món</th><th className="px-2 py-2 text-right">Số kg bán</th>
-                  <th className="px-2 py-2 text-right">Giá nhập/kg</th><th className="px-4 py-2 text-right">Vốn</th></tr></thead>
+                  <th className="px-4 py-2">Món</th><th className="px-2 py-2 text-right">Số lượng bán</th>
+                  <th className="px-2 py-2 text-right">Giá nhập/đơn vị</th><th className="px-4 py-2 text-right">Vốn</th></tr></thead>
                 <tbody>
                   {detail.data.map((r, i) => (
                     <tr key={i} className="border-b">
                       <td className="px-4 py-2.5 font-semibold">{r.product_name}<div className="text-[11px] text-slate-500 font-normal">{r.product_code}</div></td>
-                      <td className="px-2 py-2.5 text-right">{num(r.kg_sold, 3)} kg</td>
+                      <td className="px-2 py-2.5 text-right">{num(r.kg_sold, 3)} {r.unit || 'kg'}</td>
                       <td className="px-2 py-2.5 text-right">× {money(r.cost_per_kg)}{Number(r.cost_per_kg) === 0 && <div className="text-[11px] text-rose-600 font-bold">chưa có giá nhập</div>}</td>
                       <td className="px-4 py-2.5 text-right font-bold">{money(r.cost)}</td>
                     </tr>))}
@@ -98,7 +98,7 @@ export default function Reports() {
               <div className="text-[11px]">= doanh thu − vốn {money(sum('cost'))}</div></div>
             <div className="col-span-2 rounded-2xl bg-teal-50 p-3 ring-2 ring-teal-200"><div className="text-xs font-semibold">🏆 Lợi nhuận thực tháng</div>
               <b className={cx('text-xl', sum('real_profit') >= 0 ? 'text-teal-700' : 'text-rose-600')}>{money(sum('real_profit'))}</b>
-              <div className="text-xs mt-0.5">= Doanh thu {money(sum('revenue'))} − Vốn {money(sum('cost'))} − Chi tiêu {money(sum('expenses'))}</div></div>
+              <div className="text-xs mt-0.5">= Doanh thu {money(sum('revenue'))} − Vốn {money(sum('cost'))} − Chi tiêu {money(sum('expenses'))} − Chi phí cố định {money(sum('fixed_costs'))}</div></div>
           </div>
           <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 px-4 py-2 text-xs font-bold text-slate-500 border-y"><span>Ngày</span><span className="text-right">Doanh thu</span><span className="text-right w-28">Lợi nhuận<br /><span className="text-teal-700">LN thực</span></span></div>
           <div className="divide-y">
@@ -111,11 +111,11 @@ export default function Reports() {
                 </span>
                 <span className="text-right text-sm">{Number(r.revenue) ? money(r.revenue) : '—'}</span>
                 <span className="text-right w-28"><b className={cx('block', Number(r.gross_profit) < 0 ? 'text-rose-600' : Number(r.gross_profit) ? 'text-ruong-700' : 'text-slate-400')}>{Number(r.revenue) ? money(r.gross_profit) : '—'}</b>
-                  {(Number(r.revenue) > 0 || Number(r.expenses) > 0) && <span className={cx('block text-xs font-bold', Number(r.real_profit) < 0 ? 'text-rose-600' : 'text-teal-700')}>{money(r.real_profit)}</span>}</span>
+                  {(Number(r.revenue) > 0 || Number(r.expenses) > 0 || Number(r.fixed_costs) > 0) && <span className={cx('block text-xs font-bold', Number(r.real_profit) < 0 ? 'text-rose-600' : 'text-teal-700')}>{money(r.real_profit)}</span>}</span>
               </button>))}
           </div>
         </Card>
-        <p className="text-xs text-slate-600 bg-white/80 rounded-xl px-3 py-2">ℹ️ Tiền vốn = tổng (số kg bán của từng món × giá nhập/kg của món đó). Giá nhập lấy theo phiếu nhập gần nhất hoặc giá bạn sửa trong Sản phẩm, và được chốt tại lúc bán. <b>Lợi nhuận</b> = doanh thu − vốn (chưa trừ chi tiêu). <b>Lợi nhuận thực</b> = doanh thu − vốn − chi tiêu (các khoản ở mục Chi tiêu: điện, nước, vận chuyển…). Chi nhập hàng không tính vào chi tiêu vì đã nằm trong vốn. Hóa đơn đã hủy không được tính.</p>
+        <p className="text-xs text-slate-600 bg-white/80 rounded-xl px-3 py-2">ℹ️ Tiền vốn = tổng (số kg bán × giá nhập/kg) với hàng cân, và (số hủ/bịch… bán × giá nhập mỗi cái) với hàng đếm. Giá nhập lấy theo phiếu nhập gần nhất hoặc giá bạn sửa trong Sản phẩm, và được chốt tại lúc bán. <b>Lợi nhuận</b> = doanh thu − vốn (chưa trừ chi tiêu). <b>Lợi nhuận thực</b> = doanh thu − vốn − chi tiêu (khoản chi phát sinh ở mục Chi tiêu) − chi phí cố định mỗi ngày (thuê nhà, lương…, sửa ở mục Chi tiêu). Chi nhập hàng không tính vào chi tiêu vì đã nằm trong vốn. Hóa đơn đã hủy không được tính.</p>
       </>}
     </div>
   );

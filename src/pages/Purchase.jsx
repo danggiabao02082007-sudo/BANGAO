@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supabase, rpc, q } from '../lib/supabase.js';
-import { money, num, datetime, digits } from '../lib/format.js';
+import { money, num, datetime, digits, suCode, su } from '../lib/format.js';
 import { Card, Button, Input, Select, Field, Empty, Loading, ErrorBox, useLoad, useToast, DeleteButton, useSelection, BulkBar, Check, cx } from '../components/ui.jsx';
 
 export default function Purchase({ profile }) {
@@ -10,16 +10,19 @@ export default function Purchase({ profile }) {
   const hist = useLoad(() => q(supabase.from('purchase_receipts').select('*, suppliers(name)').order('receipt_date', { ascending: false }).limit(30)), []);
   const [sup, setSup] = useState(''); const [lines, setLines] = useState([]); const [paid, setPaid] = useState(null); const [acc, setAcc] = useState('cash'); const [note, setNote] = useState(''); const [busy, setBusy] = useState(false);
   const sel = useSelection(); const owner = profile?.role === 'owner';
-  const addLine = () => setLines(l => [...l, { key: Math.random(), product_id: prods.data[0]?.id || '', unit_code: 'bao', qty: '', price: '' }]);
+  const addLine = () => setLines(l => [...l, { key: Math.random(), product_id: prods.data[0]?.id || '', unit_code: suCode(prods.data[0]), qty: '', price: '' }]);
   const upd = (k, patch) => setLines(l => l.map(x => x.key === k ? { ...x, ...patch } : x));
   const calc = lines.map(l => { const p = prods.data?.find(x => x.id === l.product_id); const u = p?.units.find(x => x.unit_code === l.unit_code);
     const qty = Number(String(l.qty).replace(',', '.')) || 0;
-    const kgPerUnit = l.unit_code === 'kg' ? 1 : l.unit_code === 'tan' ? 1000 : Number(p?.kg_per_bao || 0);
+    const piece = p && !['bao', 'kg'].includes(suCode(p));
+    // Hàng cân: so theo giá/kg; hàng đếm (hủ, bịch…): so theo giá/1 đơn vị
+    const kgPerUnit = piece ? 1 : l.unit_code === 'kg' ? 1 : l.unit_code === 'tan' ? 1000 : Number(p?.kg_per_bao || 0);
     const perKg = kgPerUnit ? (Number(l.price) || 0) / kgPerUnit : 0;
     const kgU = p?.units.find(x => x.unit_code === 'kg' && x.is_active), baoU = p?.units.find(x => x.unit_code === 'bao');
-    const saleKg = kgU ? Number(kgU.retail_price) : baoU && p ? Number(baoU.retail_price) / Number(p.kg_per_bao) : 0;
+    const pcU = piece ? p.units.find(x => x.unit_code === suCode(p)) : null;
+    const saleKg = pcU ? Number(pcU.retail_price) : kgU && Number(kgU.retail_price) ? Number(kgU.retail_price) : baoU && p ? Number(baoU.retail_price) / Number(p.kg_per_bao) : 0;
     const warn = Number(l.price) > 0 && saleKg > 0 && (perKg < saleKg * 0.3 || perKg > saleKg * 1.5);
-    return { ...l, p, u, qtyN: qty, kgPerUnit, perKg, saleKg, warn, total: Math.round(qty * (Number(l.price) || 0)), base: qty * (u?.factor || 0) }; });
+    return { ...l, p, u, piece, per: piece ? su(p) : 'kg', qtyN: qty, kgPerUnit, perKg, saleKg, warn, total: Math.round(qty * (Number(l.price) || 0)), base: qty * (u?.factor || 0) }; });
   const total = calc.reduce((a, l) => a + l.total, 0);
   const paidN = paid == null ? total : Math.min(Number(paid || 0), total);
   const save = async () => {
@@ -41,7 +44,7 @@ export default function Purchase({ profile }) {
         <div className="space-y-2 mt-3">
           {calc.map(l => (
             <div key={l.key} className="rounded-2xl bg-sky-50 p-3">
-              <div className="flex gap-2"><Select value={l.product_id} onChange={e => upd(l.key, { product_id: e.target.value, unit_code: 'bao' })} className="flex-1">
+              <div className="flex gap-2"><Select value={l.product_id} onChange={e => upd(l.key, { product_id: e.target.value, unit_code: suCode(prods.data.find(x => x.id === e.target.value)) })} className="flex-1">
                 {prods.data.map(p => <option key={p.id} value={p.id}>{p.product_code} · {p.name}</option>)}</Select>
                 <button onClick={() => setLines(x => x.filter(y => y.key !== l.key))} className="text-rose-500 font-bold px-2" aria-label="Xóa dòng">✕</button></div>
               <div className="grid grid-cols-3 gap-2 mt-2">
@@ -49,9 +52,9 @@ export default function Purchase({ profile }) {
                 <label className="text-xs">Đơn vị<Select value={l.unit_code} onChange={e => upd(l.key, { unit_code: e.target.value })}>{l.p?.units.map(u => <option key={u.unit_code} value={u.unit_code}>{u.unit_name}</option>)}</Select></label>
                 <label className="text-xs">Giá nhập cho 1 {l.u?.unit_name || 'đơn vị'} (đ)<Input inputMode="numeric" value={l.price} onChange={e => upd(l.key, { price: digits(e.target.value) })} /></label>
               </div>
-              <div className="text-sm mt-1 flex justify-between gap-2"><span>= {num(l.qtyN * l.kgPerUnit, 1)} kg · giá nhập <b>{money(l.perKg)}/kg</b></span><b>{money(l.total)}</b></div>
-              {l.warn && <div className="mt-2 rounded-xl bg-rose-100 text-rose-700 text-sm font-semibold p-2">⚠️ Giá nhập {money(l.perKg)}/kg rất khác giá bán {money(l.saleKg)}/kg. Ô này là giá cho <b>1 {l.u?.unit_name}</b>{l.unit_code !== 'kg' && ` (${num(l.kgPerUnit, 1)} kg)`}.
-                {l.unit_code !== 'kg' && <button type="button" onClick={() => upd(l.key, { price: String(Math.round(Number(l.price) * l.kgPerUnit)) })}
+              <div className="text-sm mt-1 flex justify-between gap-2"><span>{l.piece ? <>giá nhập <b>{money(l.perKg)}/{l.per}</b></> : <>= {num(l.qtyN * l.kgPerUnit, 1)} kg · giá nhập <b>{money(l.perKg)}/kg</b></>}</span><b>{money(l.total)}</b></div>
+              {l.warn && <div className="mt-2 rounded-xl bg-rose-100 text-rose-700 text-sm font-semibold p-2">⚠️ Giá nhập {money(l.perKg)}/{l.per} rất khác giá bán {money(l.saleKg)}/{l.per}. Ô này là giá cho <b>1 {l.u?.unit_name}</b>{l.unit_code !== 'kg' && ` (${num(l.kgPerUnit, 1)} kg)`}.
+                {!l.piece && l.unit_code !== 'kg' && <button type="button" onClick={() => upd(l.key, { price: String(Math.round(Number(l.price) * l.kgPerUnit)) })}
                   className="block mt-2 rounded-xl bg-white text-rose-700 ring-2 ring-rose-300 px-3 py-1.5 font-bold">
                   {money(l.price)} là giá mỗi kg → đổi thành {money(Number(l.price) * l.kgPerUnit)}/{l.u?.unit_name.toLowerCase()}</button>}</div>}
             </div>))}
