@@ -213,13 +213,13 @@ function ThemeCard() {
   const eff = effectiveTheme(t);
   return (
     <Card title="Chủ đề giao diện" icon="🎨" accent="from-red-600 to-emerald-600">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {THEMES.map(([k, n]) => (
           <button key={k} onClick={() => pick(k)} aria-pressed={t === k}
             className={'rounded-2xl py-3 px-2 font-bold text-sm ' + (t === k ? 'bg-gradient-to-r from-red-600 to-emerald-600 text-white shadow' : 'bg-slate-100')}>{n}</button>))}
       </div>
       <p className="text-sm mt-3">{THEMES.find(x => x[0] === t)[2]}.</p>
-      <p className="text-xs text-slate-500 mt-1">Đang hiện: <b>{eff === 'xmas' ? 'Giáng sinh 🎄' : 'Cánh đồng lúa 🌾'}</b>. Lựa chọn chỉ áp dụng cho máy này. Tuyết rơi và xe tuần lộc tắt theo mục “Hiệu ứng động”.</p>
+      <p className="text-xs text-slate-500 mt-1">Đang hiện: <b>{THEMES.find(x => x[0] === eff)?.[1]}</b>. Lựa chọn chỉ áp dụng cho máy này. Các hiệu ứng bay, rơi, pháo hoa tắt theo mục “Hiệu ứng động”. Tết và Trung Thu tính theo âm lịch (đã có ngày đến năm 2030).</p>
     </Card>
   );
 }

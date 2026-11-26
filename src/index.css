@@ -108,3 +108,54 @@ html.theme-xmas aside { background-image: linear-gradient(180deg, rgba(254, 242,
 /* Hiệu ứng nhẹ / tắt: dừng tuyết rơi, xe tuần lộc, đèn nháy */
 html.motion-lite .snowflake, html.motion-lite .sleigh-fly, html.motion-off .snowflake, html.motion-off .sleigh-fly { display: none; }
 html.motion-lite .twinkle, html.motion-lite .star-glow, html.motion-lite .twinkle-star { animation: none !important; }
+
+/* ================= CÁC DỊP LỄ KHÁC: viền trang trí trên thẻ + dưới thanh tiêu đề ================= */
+html.theme-tet .card::before, html.theme-le304 .card::before, html.theme-trungthu .card::before, html.theme-halloween .card::before {
+  content: ''; position: absolute; left: 0; right: 0; top: -1px; z-index: 3; pointer-events: none; background-repeat: repeat-x;
+}
+html.theme-tet .app-head::after, html.theme-le304 .app-head::after, html.theme-trungthu .app-head::after, html.theme-halloween .app-head::after {
+  content: ''; position: absolute; left: 0; right: 0; pointer-events: none; background-repeat: repeat-x;
+}
+/* Tết: diềm đỏ viền vàng có hoa mai nhỏ */
+html.theme-tet .card::before { height: 14px; background-size: 60px 14px; filter: drop-shadow(0 1px 1px rgba(127, 29, 29, .35));
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 14'%3E%3Cpath d='M0 0H60V5Q45 13 30 5Q15 13 0 5Z' fill='%23DC2626' stroke='%23FACC15' stroke-width='1.5'/%3E%3Cg fill='%23FACC15'%3E%3Ccircle cx='30' cy='5' r='2.2'/%3E%3Ccircle cx='27.6' cy='3.6' r='1.4'/%3E%3Ccircle cx='32.4' cy='3.6' r='1.4'/%3E%3Ccircle cx='28.4' cy='6.8' r='1.4'/%3E%3Ccircle cx='31.6' cy='6.8' r='1.4'/%3E%3C/g%3E%3C/svg%3E"); }
+html.theme-tet .app-head::after { bottom: -12px; height: 14px; background-size: 60px 14px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 14'%3E%3Cpath d='M0 0H60V5Q45 13 30 5Q15 13 0 5Z' fill='%23FACC15'/%3E%3C/svg%3E"); }
+/* 30/4: cờ dây đỏ vàng */
+html.theme-le304 .card::before, html.theme-le304 .app-head::after { height: 14px; background-size: 36px 14px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 14'%3E%3Cpath d='M0 1H36' stroke='%23fff' stroke-width='2'/%3E%3Cpath d='M1 1H17L9 13Z' fill='%23DC2626'/%3E%3Cpath d='M19 1H35L27 13Z' fill='%23FACC15'/%3E%3C/svg%3E"); }
+html.theme-le304 .app-head::after { bottom: -13px; }
+/* Trung Thu: dây đèn lồng */
+html.theme-trungthu .card::before, html.theme-trungthu .app-head::after { height: 18px; background-size: 64px 18px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 18'%3E%3Cpath d='M0 2Q16 7 32 2T64 2' stroke='%23FDE68A' stroke-width='1.4' fill='none'/%3E%3Cellipse cx='16' cy='10' rx='5' ry='6' fill='%23EF4444'/%3E%3Crect x='14' y='3' width='4' height='2' fill='%23FACC15'/%3E%3Cellipse cx='48' cy='10' rx='5' ry='6' fill='%23F59E0B'/%3E%3Crect x='46' y='3' width='4' height='2' fill='%23FACC15'/%3E%3C/svg%3E"); }
+html.theme-trungthu .app-head::after { bottom: -16px; }
+/* Halloween: chất nhờn tím chảy xuống */
+html.theme-halloween .card::before, html.theme-halloween .app-head::after { height: 16px; background-size: 120px 16px; filter: drop-shadow(0 2px 1px rgba(59, 7, 100, .35));
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 16' preserveAspectRatio='none'%3E%3Cpath d='M0 0H120V5Q113 7 108 5Q105 16 101 6Q90 3 80 6Q77 13 73 6Q60 3 48 6Q45 16 41 6Q30 3 20 6Q17 11 13 6Q6 4 0 5Z' fill='%237C3AED'/%3E%3C/svg%3E"); }
+html.theme-halloween .app-head::after { bottom: -14px; }
+html.theme-fest aside { background-image: linear-gradient(180deg, rgba(255, 255, 255, .92), rgba(255, 255, 255, .88)); }
+html.theme-halloween aside { background-image: linear-gradient(180deg, rgba(250, 245, 255, .94), rgba(255, 247, 237, .94)); }
+html.theme-tet aside { background-image: linear-gradient(180deg, rgba(254, 242, 242, .94), rgba(254, 252, 232, .94)); }
+
+/* Hạt bay / rơi / bay ngang, pháo hoa, lồng đèn đung đưa, bí ngô lập lòe */
+.fx-fall { top: -30px; will-change: transform; animation: fxfall linear infinite; }
+.fx-fall.alt { animation-name: fxfall2; }
+@keyframes fxfall { from { transform: translate3d(0, -30px, 0) rotate(0); } to { transform: translate3d(30px, 105vh, 0) rotate(300deg); } }
+@keyframes fxfall2 { from { transform: translate3d(0, -30px, 0) rotate(0); } to { transform: translate3d(-30px, 105vh, 0) rotate(-300deg); } }
+.fx-rise { bottom: -50px; top: auto; will-change: transform; animation: fxrise linear infinite; }
+.fx-rise.alt { animation-name: fxrise2; }
+@keyframes fxrise { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(30px, -112vh, 0); } }
+@keyframes fxrise2 { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-30px, -112vh, 0); } }
+.fx-fly { will-change: transform; animation: fxfly linear infinite; }
+.fx-fly.alt { animation-name: fxfly2; }
+@keyframes fxfly { from { transform: translate3d(-120px, 0, 0); } to { transform: translate3d(calc(100vw + 120px), -40px, 0); } }
+@keyframes fxfly2 { from { transform: translate3d(-120px, 0, 0); } to { transform: translate3d(calc(100vw + 120px), 50px, 0); } }
+.firework { will-change: transform, opacity; transform-origin: center; animation: firework 4.2s ease-out infinite; opacity: 0; }
+@keyframes firework { 0% { transform: scale(.1); opacity: 0; } 8% { opacity: 1; } 55% { transform: scale(1); opacity: .9; } 80%, 100% { transform: scale(1.12); opacity: 0; } }
+.swing { transform-origin: 50% 0; animation: swing 2.6s ease-in-out infinite alternate; }
+@keyframes swing { from { transform: rotate(-7deg); } to { transform: rotate(7deg); } }
+.flicker { animation: flicker 2.2s steps(4, jump-none) infinite; }
+@keyframes flicker { 0% { opacity: 1; } 33% { opacity: .55; } 66% { opacity: .9; } 100% { opacity: .65; } }
+html.motion-lite .fx-fall, html.motion-lite .fx-rise, html.motion-lite .fx-fly, html.motion-lite .firework,
+html.motion-off .fx-fall, html.motion-off .fx-rise, html.motion-off .fx-fly, html.motion-off .firework { display: none; }
+html.motion-lite .swing, html.motion-lite .flicker { animation: none !important; }

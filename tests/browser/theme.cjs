@@ -28,6 +28,14 @@ const U = 'http://localhost:8784/';
   await p.click('button:has-text("🎄 Giáng sinh")'); await p.waitForTimeout(500);
   ok(await isX() && await p.locator('.snowflake').count() > 20, 'Chọn lại "Giáng sinh": bật ngay');
   await p.screenshot({ path: `${out}/cai_dat_chu_de.png` });
+  for (const [btn, cls, fx] of [['🧧 Tết Nguyên Đán', 'theme-tet', '.fx-fall'], ['⭐ 30/4 – 1/5', 'theme-le304', '.fx-fly'], ['🥮 Trung Thu', 'theme-trungthu', '.fx-rise'], ['🎃 Halloween', 'theme-halloween', '.fx-fly']]) {
+    await p.click(`button:has-text("${btn}")`); await p.waitForTimeout(500);
+    const cap = await p.locator('section.card').first().evaluate(e => getComputedStyle(e, '::before').backgroundImage);
+    ok(await p.evaluate(c => document.documentElement.classList.contains(c), cls) && !(await isX()) && await p.locator(fx).count() > 0 && cap.includes('svg'),
+      `Chọn "${btn}": đổi cảnh, có hiệu ứng, có viền trang trí thẻ`);
+    await p.screenshot({ path: `${out}/${cls}.png` });
+  }
+  await p.click('button:has-text("🎄 Giáng sinh")'); await p.waitForTimeout(400);
   await p.click('button:has-text("⏸️ Tắt")'); await p.waitForTimeout(400);
   ok(await p.locator('.snowflake').first().evaluate(e => getComputedStyle(e).display) === 'none', 'Hiệu ứng động "Tắt": dừng tuyết rơi');
   ok(errs.length === 0, 'Không có lỗi JavaScript ' + JSON.stringify(errs));

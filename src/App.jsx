@@ -2,7 +2,7 @@ import { useEffect, useState, lazy, Suspense } from 'react';
 import { supabase } from './lib/supabase.js';
 import { ROLE } from './lib/format.js';
 import RiceScene from './components/RiceScene.jsx';
-import { XmasScene, XmasSky, XmasOverlay, SantaHat } from './components/ChristmasScene.jsx';
+import { FEST } from './components/themes.js';
 import { effectiveTheme } from './lib/theme.js';
 import { cx, Loading } from './components/ui.jsx';
 import Login from './pages/Login.jsx';
@@ -42,8 +42,9 @@ export default function App() {
   const [profile, setProfile] = useState(null);
   const [page, setPage] = useState(() => location.hash.slice(1) || 'dashboard');
   const [more, setMore] = useState(false);
-  const [xmas, setXmas] = useState(() => effectiveTheme() === 'xmas');
-  useEffect(() => { const h = e => setXmas(e.detail === 'xmas'); addEventListener('themechange', h); return () => removeEventListener('themechange', h); }, []);
+  const [themeId, setThemeId] = useState(() => effectiveTheme());
+  useEffect(() => { const h = e => setThemeId(e.detail); addEventListener('themechange', h); return () => removeEventListener('themechange', h); }, []);
+  const fest = FEST[themeId];
   // Thu gọn thanh bên trên máy tính (nhớ theo máy)
   const [mini, setMini] = useState(() => { try { return localStorage.getItem('bonbien.sidebar') === 'mini'; } catch { return false; } });
   const toggleMini = () => setMini(v => { try { localStorage.setItem('bonbien.sidebar', v ? 'full' : 'mini'); } catch { /* bỏ qua */ } return !v; });
@@ -73,17 +74,17 @@ export default function App() {
 
   return (
     <div className="min-h-screen">
-      {xmas ? <>
-        <XmasSky />
-        <XmasScene className="fixed inset-x-0 bottom-0 w-full h-[46vh] -z-10" />
-        <XmasOverlay />
+      {fest ? <>
+        <fest.Sky />
+        <fest.Scene className="fixed inset-x-0 bottom-0 w-full h-[46vh] -z-10" />
+        <fest.Overlay />
       </> : <>
         <RiceScene className="fixed inset-x-0 bottom-0 w-full h-[46vh] -z-10" />
         <div className="fixed inset-x-0 top-0 h-[60vh] -z-20 bg-gradient-to-b from-sky-300 via-sky-100 to-ruong-50" />
       </>}
       {/* Thanh bên (máy tính) */}
       <aside className={cx('hidden lg:flex fixed inset-y-0 left-0 flex-col bg-white/90 backdrop-blur border-r border-ruong-100 z-30 transition-[width] duration-200', mini ? 'w-20' : 'w-64')}>
-        <div className={cx('flex items-center', mini && 'justify-center pt-4 pb-3')}><Brand mini={mini} xmas={xmas} /></div>
+        <div className={cx('flex items-center', mini && 'justify-center pt-4 pb-3')}><Brand mini={mini} fest={fest} /></div>
         {/* Nút thu gọn / mở rộng: tròn nhỏ gắn ở mép phải thanh bên */}
         <button onClick={toggleMini} title={mini ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'} aria-label={mini ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'}
           className={cx('absolute -right-4 w-8 h-8', mini ? 'top-[66px]' : 'top-8', ' rounded-full bg-white ring-2 ring-ruong-200 shadow-md hover:bg-ruong-50 text-ruong-700 font-black grid place-items-center transition hover:scale-110')}>{mini ? '»' : '«'}</button>
@@ -102,7 +103,7 @@ export default function App() {
 
       <div className={cx('transition-[padding] duration-200', mini ? 'lg:pl-20' : 'lg:pl-64')}>
         {/* Thanh trên */}
-        <header className={cx('app-head sticky top-0 z-20 text-white bg-gradient-to-r shadow-md grain-pattern', xmas ? 'from-red-700 via-rose-600 to-emerald-700' : cur.g)} style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+        <header className={cx('app-head sticky top-0 z-20 text-white bg-gradient-to-r shadow-md grain-pattern', fest ? fest.head : cur.g)} style={{ paddingTop: 'env(safe-area-inset-top)' }}>
           <div className={cx('mx-auto flex items-center gap-3 px-4 py-3', mini ? 'max-w-[1440px]' : 'max-w-6xl')}>
             <span className="text-3xl drop-shadow floaty">{cur.icon}</span>
             <div className="flex-1 min-w-0">
@@ -149,15 +150,15 @@ export default function App() {
   );
 }
 
-function Brand({ mini, xmas }) {
+function Brand({ mini, fest }) {
   const logo = cls => <span className="relative shrink-0"><img src="icons/icon-192.png" alt={mini ? 'Đại lý Bốn Biển' : ''} className={cls} />
-    {xmas && <SantaHat className="absolute -top-4 -left-3 w-9 -rotate-12 drop-shadow" />}</span>;
+    {fest && <fest.Hat className={fest.hat} />}</span>;
   if (mini) return logo('w-11 h-11 rounded-2xl shadow heartbeat');
   return (
     <div className="flex-1 min-w-0 px-5 py-5 flex items-center gap-3">
       {logo('w-12 h-12 rounded-2xl shadow heartbeat')}
       <div className="min-w-0"><div className="font-extrabold text-lg bg-gradient-to-r from-ruong-700 via-lime-600 to-lua-600 bg-clip-text text-transparent">Đại lý Bốn Biển</div>
-        <div className="text-xs text-slate-500">{xmas ? <span className="text-red-600 font-semibold">🎄 Giáng sinh an lành</span> : 'Quản lý cửa hàng gạo'}</div></div>
+        <div className="text-xs text-slate-500">{fest ? <span className={fest.subCls + ' font-semibold'}>{fest.sub}</span> : 'Quản lý cửa hàng gạo'}</div></div>
     </div>
   );
 }
