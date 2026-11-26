@@ -75,16 +75,25 @@ export function Stat({ label, value, sub, icon, grad, format }) {
 export const Badge = ({ color = 'bg-ruong-100 text-ruong-800', children }) =>
   <span className={cx('inline-block rounded-full px-2.5 py-0.5 text-xs font-bold', color)}>{children}</span>;
 
+// Khóa cuộn trang nền khi có hộp thoại mở; đếm số hộp đang mở (hộp lồng nhau) để chỉ gỡ khóa khi hộp cuối cùng đóng
+let locks = 0;
+const InModal = createContext(false);
+
 export function Modal({ title, onClose, children, wide }) {
   useEffect(() => { const k = e => e.key === 'Escape' && onClose(); addEventListener('keydown', k); return () => removeEventListener('keydown', k); }, [onClose]);
+  useEffect(() => {
+    if (locks++ === 0) document.documentElement.classList.add('scroll-lock');
+    return () => { if (--locks === 0) document.documentElement.classList.remove('scroll-lock'); };
+  }, []);
+  // 92dvh: vừa vùng nhìn thấy thật trên điện thoại (trừ thanh địa chỉ); 92vh dự phòng cho trình duyệt cũ
   return (
     <div className="fixed inset-0 z-50 bg-ink/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onMouseDown={e => e.target === e.currentTarget && onClose()}>
-      <div className={cx('bg-white w-full rounded-t-3xl sm:rounded-3xl max-h-[92vh] overflow-auto shadow-2xl', wide ? 'sm:max-w-3xl' : 'sm:max-w-lg')}>
-        <div className="sticky top-0 z-10 flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-lua-400 via-lime-400 to-ruong-500 text-white">
-          <h3 className="font-extrabold flex-1">{title}</h3>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/30 font-bold" aria-label="Đóng">✕</button>
+      <div className={cx('thin-scroll bg-white w-full rounded-t-3xl sm:rounded-3xl max-h-[92vh] supports-[height:100dvh]:max-h-[92dvh] overflow-auto overscroll-contain shadow-2xl', wide ? 'sm:max-w-3xl' : 'sm:max-w-lg')}>
+        <div className="sticky top-0 left-0 z-10 h-14 flex items-center gap-2 px-5 bg-gradient-to-r from-lua-400 via-lime-400 to-ruong-500 text-white">
+          <h3 className="font-extrabold flex-1 truncate">{title}</h3>
+          <button onClick={onClose} className="w-8 h-8 shrink-0 rounded-full bg-white/30 font-bold" aria-label="Đóng">✕</button>
         </div>
-        <div className="p-5">{children}</div>
+        <div className="p-5"><InModal.Provider value={true}>{children}</InModal.Provider></div>
       </div>
     </div>
   );
@@ -95,11 +104,14 @@ export function Empty({ icon = '🌾', text }) {
 }
 
 export function Table({ head, children }) {
+  // Trong hộp thoại: tiêu đề cột dính ngay dưới thanh tiêu đề hộp (top-14 = 56px). Khung overflow-x sẽ chặn sticky,
+  // nên trong hộp bỏ khung cuộn ngang, thu gọn lề ô trên điện thoại để bảng vừa chiều rộng (hộp tự cuộn nếu vẫn tràn)
+  const m = useContext(InModal);
   return (
-    <div className="overflow-x-auto -mx-4">
-      <table className="w-full text-sm min-w-[560px]">
-        <thead><tr className="text-left text-slate-500 border-b">{head.map((h, i) => <th key={i} className={cx('px-4 py-2 font-semibold', h.r && 'text-right')}>{h.t ?? h}</th>)}</tr></thead>
-        <tbody className="[&>tr]:border-b [&>tr:last-child]:border-0 [&_td]:px-4 [&_td]:py-2.5">{children}</tbody>
+    <div className={m ? '-mx-4' : 'overflow-x-auto -mx-4'}>
+      <table className={cx('w-full text-sm', m ? 'sm:min-w-[560px]' : 'min-w-[560px]')}>
+        <thead><tr className="text-left text-slate-500 border-b">{head.map((h, i) => <th key={i} className={cx('font-semibold', m ? 'sticky top-14 z-[5] bg-white px-2 sm:px-4 py-2 shadow-[inset_0_-1px_0_#e2e8f0]' : 'px-4 py-2', h.r && 'text-right')}>{h.t ?? h}</th>)}</tr></thead>
+        <tbody className={cx('[&>tr]:border-b [&>tr:last-child]:border-0 [&_td]:py-2.5', m ? '[&_td]:px-2 sm:[&_td]:px-4' : '[&_td]:px-4')}>{children}</tbody>
       </table>
     </div>
   );
