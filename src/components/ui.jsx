@@ -96,10 +96,10 @@ export function Empty({ icon = '🌾', text }) {
 
 export function Table({ head, children }) {
   return (
-    <div className="overflow-x-auto -mx-4">
-      <table className="w-full text-sm min-w-[560px]">
-        <thead><tr className="text-left text-slate-500 border-b">{head.map((h, i) => <th key={i} className={cx('px-4 py-2 font-semibold', h.r && 'text-right')}>{h.t ?? h}</th>)}</tr></thead>
-        <tbody className="[&>tr]:border-b [&>tr:last-child]:border-0 [&_td]:px-4 [&_td]:py-2.5">{children}</tbody>
+    <div className="-mx-4 sm:overflow-x-auto">
+      <table className="w-full text-[13px] sm:text-sm sm:min-w-[560px]">
+        <thead><tr className="text-left text-slate-500 border-b">{head.map((h, i) => <th key={i} className={cx('px-1.5 sm:px-4 py-2 font-semibold first:pl-4 last:pr-4', h.r && 'text-right', h.sm && 'hidden sm:table-cell', h.cls)}>{h.t ?? h}</th>)}</tr></thead>
+        <tbody className="[&>tr]:border-b [&>tr:last-child]:border-0 [&_td]:px-1.5 sm:[&_td]:px-4 [&_td]:py-2.5 [&_td:first-child]:pl-4 [&_td:last-child]:pr-4 [&_td]:break-words">{children}</tbody>
       </table>
     </div>
   );

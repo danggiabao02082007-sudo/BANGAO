@@ -35,7 +35,7 @@ export default function Products({ profile }) {
   const reload = () => { list.reload(); costs.reload(); };
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 overflow-x-auto">
+      <div className="flex flex-wrap gap-2">
         {tabs.map(([k, t]) => <button key={k} onClick={() => setTab(k)} className={cx('rounded-2xl px-4 py-2 font-bold whitespace-nowrap shadow-sm',
           tab === k ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-white' : 'bg-white/90')}>{t}</button>)}
       </div>

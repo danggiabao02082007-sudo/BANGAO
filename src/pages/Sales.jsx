@@ -96,7 +96,7 @@ export default function Sales({ profile }) {
       <Card title="Chọn hàng" icon="🌾" accent="from-ruong-600 to-lime-500">
         <Input ref={searchRef} value={search} onChange={e => setSearch(e.target.value)} onKeyDown={onSearchKey} autoFocus
           placeholder="🔎 Tên, mã hàng hoặc quét mã vạch rồi Enter" />
-        <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+        <div className="flex flex-wrap gap-2 mt-3 pb-1">
           {['', ...cats].map(c => (
             <button key={c} onClick={() => setCat(c)} className={cx('rounded-full px-4 py-1.5 text-sm font-bold whitespace-nowrap',
               cat === c ? 'bg-gradient-to-r from-lua-500 to-orange-400 text-white' : 'bg-lua-50 text-lua-700 ring-1 ring-lua-200')}>{c || 'Tất cả'}</button>))}

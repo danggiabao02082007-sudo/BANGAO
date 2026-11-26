@@ -117,11 +117,12 @@ export function InvoiceDetail({ id, profile, onClose, onChanged }) {
           </div>
           <p className="text-sm text-slate-600">{datetime(i.invoice_date)} · Khách: <b>{i.customer_name}</b></p>
           {i.status === 'cancelled' && <p className="text-sm text-rose-600 mt-1">Lý do hủy: {i.cancel_reason} ({datetime(i.cancelled_at)})</p>}
-          <div className="mt-3"><Table head={['Mã', 'Tên hàng', 'SL', { t: 'Đơn giá', r: 1 }, { t: 'Giảm', r: 1 }, { t: 'Thành tiền', r: 1 }]}>
-            {items.map(it => <tr key={it.id}><td className="text-xs">{it.product_code}</td><td className="font-semibold">{it.product_name}</td>
+          <div className="mt-3"><Table head={[{ t: 'Mã', sm: 1 }, { t: 'Tên hàng', cls: '!pl-4' }, 'SL', { t: 'Đơn giá', r: 1 }, { t: 'Giảm', r: 1, sm: 1 }, { t: 'Thành tiền', r: 1 }]}>
+            {items.map(it => <tr key={it.id}><td className="text-xs hidden sm:table-cell">{it.product_code}</td>
+              <td className="font-semibold !pl-4 sm:!pl-4">{it.product_name}<div className="sm:hidden text-[11px] font-normal text-slate-500">{it.product_code}{Number(it.discount) > 0 && ` · giảm ${money(it.discount)}`}</div></td>
               <td>{num(it.quantity, 3)} {it.unit_name}{Number(it.conversion_factor) !== 1 && <div className="text-[11px] text-slate-500">{num(it.base_qty, 3)} bao</div>}</td>
               <td className="text-right">{money(it.unit_price)}{Number(it.unit_price) !== Number(it.list_price) && <div className="text-[11px] text-lua-700">niêm yết {money(it.list_price)}</div>}</td>
-              <td className="text-right">{money(it.discount)}</td><td className="text-right font-bold">{money(it.line_total)}</td></tr>)}
+              <td className="text-right hidden sm:table-cell">{money(it.discount)}</td><td className="text-right font-bold">{money(it.line_total)}</td></tr>)}
           </Table></div>
           <div className="mt-3 rounded-2xl bg-lua-50 p-3 grid grid-cols-2 gap-1 text-sm">
             <span>Tạm tính</span><b className="text-right">{money(i.subtotal)}</b>

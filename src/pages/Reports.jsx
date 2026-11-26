@@ -90,21 +90,21 @@ export default function Reports() {
         <Card title={`Chi tiết tiền vốn ngày ${date(day)}`} icon="🧮" accent="from-violet-500 to-fuchsia-500" bodyClass="p-0">
           {detail.loading ? <Loading /> : detail.error ? <div className="p-4"><ErrorBox error={detail.error} /></div> : !detail.data.length
             ? <p className="p-4 text-slate-500">Ngày này chưa bán hàng.</p> : <>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[480px]">
+            <div className="sm:overflow-x-auto">
+              <table className="w-full text-[13px] sm:text-sm sm:min-w-[480px]">
                 <thead><tr className="text-left text-slate-500 border-b">
-                  <th className="px-4 py-2">Món</th><th className="px-2 py-2 text-right">Số lượng bán</th>
-                  <th className="px-2 py-2 text-right">Giá nhập/đơn vị</th><th className="px-4 py-2 text-right">Vốn</th></tr></thead>
+                  <th className="px-3 sm:px-4 py-2">Món</th><th className="px-1 sm:px-2 py-2 text-right">Số lượng bán</th>
+                  <th className="px-1 sm:px-2 py-2 text-right">Giá nhập/đơn vị</th><th className="px-3 sm:px-4 py-2 text-right">Vốn</th></tr></thead>
                 <tbody>
                   {detail.data.map((r, i) => (
                     <tr key={i} className="border-b">
-                      <td className="px-4 py-2.5 font-semibold">{r.product_name}<div className="text-[11px] text-slate-500 font-normal">{r.product_code}</div></td>
-                      <td className="px-2 py-2.5 text-right">{num(r.kg_sold, 3)} {r.unit || 'kg'}</td>
-                      <td className="px-2 py-2.5 text-right">× {money(r.cost_per_kg)}{Number(r.cost_per_kg) === 0 && <div className="text-[11px] text-rose-600 font-bold">chưa có giá nhập</div>}</td>
-                      <td className="px-4 py-2.5 text-right font-bold">{money(r.cost)}</td>
+                      <td className="px-3 sm:px-4 py-2.5 font-semibold">{r.product_name}<div className="text-[11px] text-slate-500 font-normal">{r.product_code}</div></td>
+                      <td className="px-1 sm:px-2 py-2.5 text-right">{num(r.kg_sold, 3)} {r.unit || 'kg'}</td>
+                      <td className="px-1 sm:px-2 py-2.5 text-right">× {money(r.cost_per_kg)}{Number(r.cost_per_kg) === 0 && <div className="text-[11px] text-rose-600 font-bold">chưa có giá nhập</div>}</td>
+                      <td className="px-3 sm:px-4 py-2.5 text-right font-bold">{money(r.cost)}</td>
                     </tr>))}
-                  <tr className="bg-violet-50"><td className="px-4 py-3 font-extrabold" colSpan={3}>Tổng tiền vốn</td>
-                    <td className="px-4 py-3 text-right font-extrabold text-violet-700">{money(detail.data.reduce((a, r) => a + Number(r.cost), 0))}</td></tr>
+                  <tr className="bg-violet-50"><td className="px-3 sm:px-4 py-3 font-extrabold" colSpan={3}>Tổng tiền vốn</td>
+                    <td className="px-3 sm:px-4 py-3 text-right font-extrabold text-violet-700">{money(detail.data.reduce((a, r) => a + Number(r.cost), 0))}</td></tr>
                 </tbody>
               </table>
             </div>

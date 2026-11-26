@@ -159,3 +159,10 @@ html.theme-tet aside { background-image: linear-gradient(180deg, rgba(254, 242, 
 html.motion-lite .fx-fall, html.motion-lite .fx-rise, html.motion-lite .fx-fly, html.motion-lite .firework,
 html.motion-off .fx-fall, html.motion-off .fx-rise, html.motion-off .fx-fly, html.motion-off .firework { display: none; }
 html.motion-lite .swing, html.motion-lite .flicker { animation: none !important; }
+
+/* ================= ĐIỆN THOẠI: khóa phóng to/thu nhỏ, chỉ cho trượt lên xuống ================= */
+html, body { max-width: 100%; overflow-x: hidden; overflow-x: clip; overscroll-behavior-x: none; }
+@media (max-width: 1023px), (pointer: coarse) {
+  html, body { touch-action: pan-y; }             /* chỉ trượt dọc; tắt chụm 2 ngón phóng to và chạm 2 lần phóng to */
+  input, select, textarea { font-size: 16px !important; }   /* iPhone không tự phóng to khi bấm vào ô nhập */
+}
