@@ -5,21 +5,29 @@ import { cx, Card, Button, Input, Modal, Badge, Empty, Loading, ErrorBox, useLoa
 import { downloadXlsx } from '../lib/excel.js';
 import PrintInvoice from '../components/Print.jsx';
 
+// Hình thức thanh toán: chuyển khoản / tiền mặt / ghi nợ (chưa trả đồng nào)
+export const payKind = i => Number(i.paid_amount) === 0 && Number(i.total_amount) > 0 ? 'debt' : i.cash_accounts?.code === 'bank' ? 'bank' : 'cash';
+export const PAY = {
+  cash: { label: '💵 Tiền mặt', badge: 'bg-emerald-100 text-emerald-800', row: 'border-l-emerald-500', tint: '' },
+  bank: { label: '🏦 Chuyển khoản', badge: 'bg-sky-100 text-sky-800', row: 'border-l-sky-500', tint: 'bg-sky-50/80' },
+  debt: { label: '📒 Ghi nợ', badge: 'bg-rose-100 text-rose-700', row: 'border-l-rose-400', tint: 'bg-rose-50/50' }
+};
+
 export default function Invoices({ profile }) {
   const today = isoDay();
   const [from, setFrom] = useState(isoDay(new Date(Date.now() - 6 * 864e5)));
   const [to, setTo] = useState(today);
   const [s, setS] = useState('');
-  const [st, setSt] = useState('');
+  const [st, setSt] = useState(''); const [pk, setPk] = useState('');
   const [open, setOpen] = useState(null);
   const list = useLoad(() => {
-    let x = supabase.from('sales_invoices').select('*').gte('invoice_date', from + 'T00:00:00+07:00').lte('invoice_date', to + 'T23:59:59+07:00')
+    let x = supabase.from('sales_invoices').select('*, cash_accounts(code,name)').gte('invoice_date', from + 'T00:00:00+07:00').lte('invoice_date', to + 'T23:59:59+07:00')
       .order('invoice_date', { ascending: false }).limit(500);
     if (st) x = x.eq('status', st);
-    if (st === 'debt') x = supabase.from('sales_invoices').select('*').gt('debt_remaining', 0).eq('status', 'completed').order('invoice_date');
+    if (st === 'debt') x = supabase.from('sales_invoices').select('*, cash_accounts(code,name)').gt('debt_remaining', 0).eq('status', 'completed').order('invoice_date');
     return q(x);
   }, [from, to, st]);
-  const rows = (list.data || []).filter(i => !s || i.invoice_code.toLowerCase().includes(s.toLowerCase()) || i.customer_name.toLowerCase().includes(s.toLowerCase()));
+  const rows = (list.data || []).filter(i => !pk || payKind(i) === pk).filter(i => !s || i.invoice_code.toLowerCase().includes(s.toLowerCase()) || i.customer_name.toLowerCase().includes(s.toLowerCase()));
   const ok = rows.filter(i => i.status === 'completed');
   const sel = useSelection();
   const toast = useToast();
@@ -29,8 +37,8 @@ export default function Invoices({ profile }) {
       for (let k = 0; k < ids.length; k += 150) items.push(...await q(supabase.from('sales_invoice_items').select('*').in('invoice_id', ids.slice(k, k + 150)).order('line_no')));
       const code = Object.fromEntries(rows.map(i => [i.id, i]));
       const n = await downloadXlsx(`bonbien-hoadon-${from}-den-${to}`, [
-        { name: 'Hóa đơn', head: ['Mã HĐ', 'Ngày', 'Khách', 'Trạng thái', 'Tạm tính', 'Giảm giá', 'Tổng', 'Đã trả lúc mua', 'Còn nợ', 'Ghi chú'],
-          rows: rows.map(i => [i.invoice_code, datetime(i.invoice_date), i.customer_name, i.status === 'cancelled' ? 'Đã hủy' : 'Hoàn thành', +i.subtotal, +i.discount, +i.total_amount, +i.paid_amount, +i.debt_remaining, i.note || '']) },
+        { name: 'Hóa đơn', head: ['Mã HĐ', 'Ngày', 'Khách', 'Trạng thái', 'Hình thức', 'Tạm tính', 'Giảm giá', 'Tổng', 'Đã trả lúc mua', 'Còn nợ', 'Ghi chú'],
+          rows: rows.map(i => [i.invoice_code, datetime(i.invoice_date), i.customer_name, i.status === 'cancelled' ? 'Đã hủy' : 'Hoàn thành', PAY[payKind(i)].label.slice(3), +i.subtotal, +i.discount, +i.total_amount, +i.paid_amount, +i.debt_remaining, i.note || '']) },
         { name: 'Chi tiết hàng', head: ['Mã HĐ', 'Ngày', 'Mã hàng', 'Tên hàng', 'Số lượng', 'Đơn vị', 'Quy ra đơn vị tồn kho', 'Đơn giá', 'Giảm', 'Thành tiền'],
           rows: items.map(it => [code[it.invoice_id]?.invoice_code, datetime(code[it.invoice_id]?.invoice_date), it.product_code, it.product_name, +it.quantity, it.unit_name, +it.base_qty, +it.unit_price, +it.discount, +it.line_total]) }]);
       if (n) toast('Đã xuất ' + n);
@@ -39,17 +47,22 @@ export default function Invoices({ profile }) {
   return (
     <div className="space-y-4">
       <Card title="Tra cứu hóa đơn" icon="🔎" accent="from-teal-500 to-emerald-400" right={rows.length > 0 && <Button small color="ghost" onClick={exportXlsx}>📊 Excel</Button>}>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
           <Field label="Từ ngày"><Input type="date" value={from} onChange={e => setFrom(e.target.value)} /></Field>
           <Field label="Đến ngày"><Input type="date" value={to} onChange={e => setTo(e.target.value)} /></Field>
           <Field label="Trạng thái"><Select value={st} onChange={e => setSt(e.target.value)}>
             <option value="">Tất cả</option><option value="completed">Hoàn thành</option><option value="cancelled">Đã hủy</option><option value="debt">Còn nợ (mọi ngày)</option></Select></Field>
+          <Field label="Hình thức"><Select value={pk} onChange={e => setPk(e.target.value)}>
+            <option value="">Tất cả</option><option value="cash">💵 Tiền mặt</option><option value="bank">🏦 Chuyển khoản</option><option value="debt">📒 Ghi nợ</option></Select></Field>
           <Field label="Tìm"><Input value={s} onChange={e => setS(e.target.value)} placeholder="Mã HĐ / tên khách" /></Field>
         </div>
         <div className="flex flex-wrap gap-2 mt-3 text-sm">
           <Badge>{ok.length} hóa đơn</Badge><Badge color="bg-lua-100 text-lua-700">Doanh thu {money(ok.reduce((a, i) => a + Number(i.total_amount), 0))}</Badge>
           <Badge color="bg-rose-100 text-rose-700">Còn nợ {money(ok.reduce((a, i) => a + Number(i.debt_remaining), 0))}</Badge>
+          <Badge color={PAY.cash.badge}>💵 Tiền mặt {money(ok.filter(i => i.cash_accounts?.code !== 'bank').reduce((a, i) => a + Number(i.paid_amount), 0))}</Badge>
+          <Badge color={PAY.bank.badge}>🏦 Chuyển khoản {money(ok.filter(i => i.cash_accounts?.code === 'bank').reduce((a, i) => a + Number(i.paid_amount), 0))}</Badge>
         </div>
+        <p className="text-[11px] text-slate-500 mt-1">Số tiền mặt / chuyển khoản ở đây là tiền khách trả lúc mua của các hóa đơn đang hiện. Tiền thu nợ sau đó xem ở trang Doanh thu & lợi nhuận.</p>
         {profile.role === 'owner' && <BulkBar s={sel} kind="invoice" noun="hóa đơn" className="mt-3" onDone={list.reload}
           items={rows.map(i => ({ id: i.id, label: `${i.invoice_code} · ${i.customer_name} · ${money(i.total_amount)}${i.status === 'cancelled' ? ' (đã hủy)' : ''}` }))} />}
       </Card>
@@ -57,11 +70,13 @@ export default function Invoices({ profile }) {
         {list.loading ? <Loading /> : list.error ? <ErrorBox error={list.error} /> : !rows.length ? <Empty text="Không có hóa đơn" /> : (
           <div className="divide-y">
             {rows.map(i => (
-              <button key={i.id} onClick={() => sel.on ? sel.toggle(i.id) : setOpen(i.id)} className={cx('w-full text-left flex items-center gap-3 px-4 py-3', sel.has(i.id) ? 'bg-rose-50' : 'hover:bg-ruong-50')}>
+              <button key={i.id} onClick={() => sel.on ? sel.toggle(i.id) : setOpen(i.id)} className={cx('w-full text-left flex items-center gap-3 px-4 py-3 border-l-4', i.status === 'cancelled' ? 'border-l-slate-300' : PAY[payKind(i)].row,
+                sel.has(i.id) ? 'bg-rose-50' : cx(i.status !== 'cancelled' && PAY[payKind(i)].tint, 'hover:bg-ruong-50'))}>
                 {sel.on && <Check checked={sel.has(i.id)} />}
                 <span className="text-2xl">{i.status === 'cancelled' ? '🚫' : i.debt_remaining > 0 ? '📒' : '🧾'}</span>
                 <div className="flex-1 min-w-0"><div className="font-bold">{i.invoice_code} · {i.customer_name}</div>
-                  <div className="text-xs text-slate-500">{datetime(i.invoice_date)}</div></div>
+                  <div className="text-xs text-slate-500 flex flex-wrap items-center gap-1.5">{datetime(i.invoice_date)}
+                    {i.status !== 'cancelled' && <span className={cx('rounded-full px-2 py-0.5 text-[11px] font-bold', PAY[payKind(i)].badge)}>{PAY[payKind(i)].label}</span>}</div></div>
                 <div className="text-right"><b className={i.status === 'cancelled' ? 'line-through text-slate-400' : 'text-ruong-700'}>{money(i.total_amount)}</b>
                   {i.status === 'cancelled' ? <div><Badge color="bg-slate-200 text-slate-600">Đã hủy</Badge></div>
                     : i.debt_remaining > 0 && <div className="text-xs text-rose-600 font-bold">Nợ {money(i.debt_remaining)}</div>}</div>
@@ -80,7 +95,7 @@ export function InvoiceDetail({ id, profile, onClose, onChanged }) {
   const [cancelOpen, setCancelOpen] = useState(false);
   const d = useLoad(async () => {
     const [i, items, store] = await Promise.all([
-      q(supabase.from('sales_invoices').select('*').eq('id', id).single()),
+      q(supabase.from('sales_invoices').select('*, cash_accounts(code,name)').eq('id', id).single()),
       q(supabase.from('sales_invoice_items').select('*').eq('invoice_id', id).order('line_no')),
       q(supabase.from('store_settings').select('*').single())]);
     return { i, items, store };
@@ -97,6 +112,7 @@ export function InvoiceDetail({ id, profile, onClose, onChanged }) {
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-xl font-extrabold flex-1">{i.invoice_code}</h3>
             {i.status === 'cancelled' ? <Badge color="bg-slate-200 text-slate-700">Đã hủy</Badge> : <Badge>Hoàn thành</Badge>}
+            <Badge color={PAY[payKind(i)].badge}>{PAY[payKind(i)].label}</Badge>
             {i.price_tier === 'wholesale' && <Badge color="bg-violet-100 text-violet-700">Giá sỉ</Badge>}
           </div>
           <p className="text-sm text-slate-600">{datetime(i.invoice_date)} · Khách: <b>{i.customer_name}</b></p>

@@ -16,16 +16,21 @@ export default function Reports() {
   const mFrom = day.slice(0, 8) + '01', mTo = lastDay(day) > today && day.slice(0, 7) === today.slice(0, 7) ? today : lastDay(day);
   const month = useLoad(() => rpc('real_profit_report', { p_from: mFrom, p_to: mTo }), [mFrom, mTo]);
   const detail = useLoad(() => rpc('daily_cost_detail', { p_day: day }), [day]);
+  // Tiền nhận theo ngày, tách tiền mặt / chuyển khoản
+  const cashr = useLoad(() => rpc('cash_received_report', { p_from: mFrom, p_to: mTo }), [mFrom, mTo]);
+  const cd = cashr.data?.find(r => r.day === day);
+  const csum = k => (cashr.data || []).reduce((a, r) => a + Number(r[k]), 0);
+  const cOf = d => cashr.data?.find(r => r.day === d);
   const sel0 = month.data?.find(r => r.day === day) || { revenue: 0, cost: 0, expenses: 0, gross_profit: 0, real_profit: 0, invoices: 0, fixed_costs: 0 };
   const sel = { ...sel0, profit: sel0.gross_profit };
   const sum = k => (month.data || []).reduce((a, r) => a + Number(r[k]), 0);
   const toast = useToast();
   const exportXlsx = async () => {
     try {
-      const rows = (month.data || []).map(r => [date(r.day), N(r.invoices), N(r.revenue), N(r.cost), N(r.expenses), N(r.fixed_costs), N(r.gross_profit), N(r.real_profit)]);
-      rows.push(['TỔNG THÁNG', sum('invoices'), sum('revenue'), sum('cost'), sum('expenses'), sum('fixed_costs'), sum('gross_profit'), sum('real_profit')]);
+      const rows = (month.data || []).map(r => [date(r.day), N(r.invoices), N(r.revenue), N(r.cost), N(r.expenses), N(r.fixed_costs), N(r.gross_profit), N(r.real_profit), N(cOf(r.day)?.cash_total), N(cOf(r.day)?.bank_total)]);
+      rows.push(['TỔNG THÁNG', sum('invoices'), sum('revenue'), sum('cost'), sum('expenses'), sum('fixed_costs'), sum('gross_profit'), sum('real_profit'), csum('cash_total'), csum('bank_total')]);
       const det = (detail.data || []).map(r => [r.product_code, r.product_name, N(r.kg_sold), r.unit || 'kg', N(r.cost_per_kg), N(r.cost), N(r.revenue), N(r.revenue) - N(r.cost)]);
-      const sheets = [{ name: `Tháng ${day.slice(5, 7)}-${day.slice(0, 4)}`, head: ['Ngày', 'Số hóa đơn', 'Doanh thu', 'Vốn', 'Chi tiêu', 'Chi phí cố định', 'Lợi nhuận (DT − vốn)', 'Lợi nhuận thực (DT − vốn − chi tiêu − cố định)'], rows }];
+      const sheets = [{ name: `Tháng ${day.slice(5, 7)}-${day.slice(0, 4)}`, head: ['Ngày', 'Số hóa đơn', 'Doanh thu', 'Vốn', 'Chi tiêu', 'Chi phí cố định', 'Lợi nhuận (DT − vốn)', 'Lợi nhuận thực (DT − vốn − chi tiêu − cố định)', 'Tiền mặt nhận', 'Chuyển khoản nhận'], rows }];
       if (det.length) sheets.push({ name: `Vốn ngày ${day.slice(8, 10)}-${day.slice(5, 7)}`, head: ['Mã hàng', 'Tên hàng', 'Số lượng bán', 'Đơn vị', 'Giá nhập/đơn vị', 'Vốn', 'Doanh thu', 'Lợi nhuận'], rows: det });
       const n = await downloadXlsx(`bonbien-loinhuan-${day.slice(0, 7)}`, sheets); if (n) toast('Đã xuất ' + n);
     } catch (e) { toast(e.message, 'err'); }
@@ -66,6 +71,22 @@ export default function Reports() {
           <div className="text-sm opacity-95 mt-1">= Doanh thu {money(sel.revenue)} − Vốn {money(sel.cost)} − Chi tiêu {money(sel.expenses)} − Chi phí cố định {money(sel.fixed_costs)}</div>
         </div>
 
+        <div className="grid sm:grid-cols-2 gap-3">
+          {[['cash', '💵 Tiền mặt nhận', 'from-emerald-600 to-lime-500'], ['bank', '🏦 Chuyển khoản nhận', 'from-sky-600 to-cyan-500']].map(([k, t, g]) => (
+            <div key={k} className={'card relative overflow-hidden rounded-3xl p-5 text-white shadow-soft bg-gradient-to-br ' + g}>
+              <div className="font-bold">{t} ngày {date(day)}</div>
+              <div className="text-3xl font-extrabold mt-1">{cashr.loading ? '…' : money(cd?.[k + '_total'])}</div>
+              <div className="text-sm opacity-95 mt-1 space-y-0.5">
+                <div className="flex justify-between"><span>Bán hàng</span><b>{money(cd?.[k + '_sale'])}</b></div>
+                <div className="flex justify-between"><span>Thu nợ khách</span><b>{money(cd?.[k + '_debt'])}</b></div>
+                {Number(cd?.[k + '_refund']) > 0 && <div className="flex justify-between"><span>Hoàn tiền hủy hóa đơn</span><b>−{money(cd?.[k + '_refund'])}</b></div>}
+              </div>
+            </div>))}
+        </div>
+        {cashr.error && <ErrorBox error={cashr.error} />}
+        <p className="text-xs text-slate-600 bg-white/80 rounded-xl px-3 py-2">Tổng tiền nhận ngày {date(day)}: <b>{money(Number(cd?.cash_total || 0) + Number(cd?.bank_total || 0))}</b>
+          {Number(cd?.other_in) > 0 && <> · ngoài ra có <b>{money(cd.other_in)}</b> thu khác (ghi tay ở sổ quỹ)</>}. Tiền nhận là tiền thật vào quỹ, khác doanh thu: khách ghi nợ thì chưa nhận, khách trả nợ cũ thì có nhận.</p>
+
         <Card title={`Chi tiết tiền vốn ngày ${date(day)}`} icon="🧮" accent="from-violet-500 to-fuchsia-500" bodyClass="p-0">
           {detail.loading ? <Loading /> : detail.error ? <div className="p-4"><ErrorBox error={detail.error} /></div> : !detail.data.length
             ? <p className="p-4 text-slate-500">Ngày này chưa bán hàng.</p> : <>
@@ -96,6 +117,8 @@ export default function Reports() {
             <div className="rounded-2xl bg-lua-50 p-3"><div className="text-xs font-semibold">Tổng doanh thu tháng</div><b className="text-lg text-lua-700">{money(sum('revenue'))}</b></div>
             <div className="rounded-2xl bg-ruong-50 p-3"><div className="text-xs font-semibold">Tổng lợi nhuận tháng</div><b className="text-lg text-ruong-700">{money(sum('gross_profit'))}</b>
               <div className="text-[11px]">= doanh thu − vốn {money(sum('cost'))}</div></div>
+            <div className="rounded-2xl bg-emerald-50 p-3"><div className="text-xs font-semibold">💵 Tiền mặt nhận tháng</div><b className="text-lg text-emerald-700">{money(csum('cash_total'))}</b></div>
+            <div className="rounded-2xl bg-sky-50 p-3"><div className="text-xs font-semibold">🏦 Chuyển khoản nhận tháng</div><b className="text-lg text-sky-700">{money(csum('bank_total'))}</b></div>
             <div className="col-span-2 rounded-2xl bg-teal-50 p-3 ring-2 ring-teal-200"><div className="text-xs font-semibold">🏆 Lợi nhuận thực tháng</div>
               <b className={cx('text-xl', sum('real_profit') >= 0 ? 'text-teal-700' : 'text-rose-600')}>{money(sum('real_profit'))}</b>
               <div className="text-xs mt-0.5">= Doanh thu {money(sum('revenue'))} − Vốn {money(sum('cost'))} − Chi tiêu {money(sum('expenses'))} − Chi phí cố định {money(sum('fixed_costs'))}</div></div>

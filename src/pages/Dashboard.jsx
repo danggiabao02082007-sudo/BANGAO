@@ -24,7 +24,10 @@ function Bars({ rows, label }) {
 export default function Dashboard({ go, profile }) {
   const { data: d, loading, error } = useLoad(async () => {
     const s = await rpc('dashboard_summary', {});
-    if (s.can_see_profit) s.real = (await rpc('real_profit_report', { p_from: s.day, p_to: s.day }))[0];
+    if (s.can_see_profit) {
+      s.real = (await rpc('real_profit_report', { p_from: s.day, p_to: s.day }))[0];
+      s.cashr = (await rpc('cash_received_report', { p_from: s.day, p_to: s.day }))[0];
+    }
     if (profile.role === 'owner') s.backup = await rpc('backup_status', {}).catch(() => null);
     return s;
   }, []);
@@ -69,7 +72,7 @@ export default function Dashboard({ go, profile }) {
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <Stat icon="🌾" label="Doanh thu hôm nay" value={Number(d.revenue_today)} format={money} sub={`${d.invoices_today} hóa đơn · ${date(d.day)}`} grad="from-lua-500 to-orange-400" />
-        <Stat icon="💵" label="Tiền thực thu hôm nay" value={Number(d.cash_in_today)} format={money} sub="Gồm tiền bán + thu nợ, trừ hoàn tiền" grad="from-ruong-600 to-emerald-400" />
+        <Stat icon="💵" label="Tiền thực thu hôm nay" value={Number(d.cash_in_today)} format={money} sub={d.cashr ? `💵 Tiền mặt ${money(d.cashr.cash_total)} · 🏦 Chuyển khoản ${money(d.cashr.bank_total)}` : 'Gồm tiền bán + thu nợ, trừ hoàn tiền'} grad="from-ruong-600 to-emerald-400" />
         {d.can_see_profit && <Stat icon="📈" label="Lợi nhuận hôm nay" value={Number(d.gross_profit_today)} format={money} sub="Doanh thu − tiền vốn" grad="from-violet-600 to-fuchsia-400" />}
         {d.real && <Stat icon="🏆" label="Lợi nhuận thực hôm nay" value={Number(d.real.real_profit)} format={money}
           sub={`= ${money(d.real.revenue)} − vốn ${money(d.real.cost)} − chi ${money(d.real.expenses)} − cố định ${money(d.real.fixed_costs)}`}

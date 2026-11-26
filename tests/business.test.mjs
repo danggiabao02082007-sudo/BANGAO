@@ -573,5 +573,33 @@ ok(r.error?.includes('Không đủ tồn'), 'Bật lại: bán quá tồn bị c
 r = await rpc(owner, 'create_opening_stock', { p_items: [{ product_id: nk, quantity: 3 }] });
 ok(!r.error && (await qty(nk)) === 3, 'Bật lại: nhập tồn đầu kỳ hoạt động');
 
+console.log('\n19. Tiền nhận theo ngày: tiền mặt / chuyển khoản');
+const cr0 = (await owner.rpc('cash_received_report', { p_from: day, p_to: day })).data[0];
+r = await rpc(owner, 'save_product', { p: { product_code: 'TST020', name: 'Hàng thử quỹ', category_id: hh, stock_unit: 'kg', cost_price: 5000, units: [{ unit_code: 'kg', retail_price: 10000, wholesale_price: 10000 }] } });
+const pq = r.data.id;
+await rpc(owner, 'create_opening_stock', { p_items: [{ product_id: pq, quantity: 1000 }] });
+const { data: kq } = await owner.from('customers').insert({ name: 'Khách thử quỹ' }).select().single();
+const a1 = (await rpc(owner, 'create_sales_invoice', { p: { items: [{ product_id: pq, unit_code: 'kg', quantity: 10 }], paid_amount: 100000, account_code: 'cash' } })).data;
+const a2 = (await rpc(owner, 'create_sales_invoice', { p: { items: [{ product_id: pq, unit_code: 'kg', quantity: 25 }], paid_amount: 250000, account_code: 'bank' } })).data;
+const a3 = (await rpc(owner, 'create_sales_invoice', { p: { customer_id: kq.id, items: [{ product_id: pq, unit_code: 'kg', quantity: 40 }], paid_amount: 100000, account_code: 'bank' } })).data;
+await rpc(owner, 'record_customer_payment', { p_customer: kq.id, p_amount: 120000, p_account: 'cash', p_note: '' });
+await rpc(owner, 'record_customer_payment', { p_customer: kq.id, p_amount: 50000, p_account: 'bank', p_note: '' });
+await rpc(owner, 'cancel_sales_invoice', { p_id: a1.id, p_reason: 'thử' });
+await rpc(owner, 'record_cash', { p_direction: 'in', p_category: 'other_in', p_amount: 30000, p_account: 'cash', p_party: '', p_note: '' });
+const cr1 = (await owner.rpc('cash_received_report', { p_from: day, p_to: day })).data[0];
+const dd = k => Number(cr1[k]) - Number(cr0[k]);
+eq(dd('cash_sale'), 100000, 'Tiền mặt bán hàng +100.000');
+eq(dd('bank_sale'), 350000, 'Chuyển khoản bán hàng +350.000 (250.000 + trả trước 100.000)');
+eq(dd('cash_debt'), 120000, 'Tiền mặt thu nợ +120.000');
+eq(dd('bank_debt'), 50000, 'Chuyển khoản thu nợ +50.000');
+eq(dd('cash_refund'), 100000, 'Hủy hóa đơn tiền mặt: hoàn 100.000 khỏi tiền mặt');
+eq(dd('cash_total'), 100000 + 120000 - 100000, 'Tổng tiền mặt nhận = bán + thu nợ − hoàn');
+eq(dd('bank_total'), 350000 + 50000, 'Tổng chuyển khoản nhận = 400.000');
+eq(dd('other_in'), 30000, 'Thu khác tách riêng 30.000, không cộng vào 2 tổng');
+r = await rpc(staff, 'cash_received_report', { p_from: day, p_to: day });
+ok(r.error?.includes('không có quyền'), 'Nhân viên không xem được');
+const inv3 = (await owner.from('sales_invoices').select('cash_accounts(code)').eq('id', a3.id).single()).data;
+ok(inv3.cash_accounts.code === 'bank', 'Hóa đơn lưu hình thức chuyển khoản (để tô màu)');
+
 console.log(`\nKẾT QUẢ: ${pass} đạt, ${fail} lỗi`);
 process.exit(fail ? 1 : 0);
