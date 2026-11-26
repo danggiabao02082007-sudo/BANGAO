@@ -40,6 +40,9 @@ export default function App() {
   const [profile, setProfile] = useState(null);
   const [page, setPage] = useState(() => location.hash.slice(1) || 'dashboard');
   const [more, setMore] = useState(false);
+  // Thu gọn thanh bên trên máy tính (nhớ theo máy)
+  const [mini, setMini] = useState(() => { try { return localStorage.getItem('bonbien.sidebar') === 'mini'; } catch { return false; } });
+  const toggleMini = () => setMini(v => { try { localStorage.setItem('bonbien.sidebar', v ? 'full' : 'mini'); } catch { /* bỏ qua */ } return !v; });
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -69,25 +72,28 @@ export default function App() {
       <RiceScene className="fixed inset-x-0 bottom-0 w-full h-[46vh] -z-10" />
       <div className="fixed inset-x-0 top-0 h-[60vh] -z-20 bg-gradient-to-b from-sky-300 via-sky-100 to-ruong-50" />
       {/* Thanh bên (máy tính) */}
-      <aside className="hidden lg:flex fixed inset-y-0 left-0 w-64 flex-col bg-white/90 backdrop-blur border-r border-ruong-100 z-30">
-        <Brand />
-        <nav className="flex-1 overflow-auto px-3 pb-3 space-y-1">
+      <aside className={cx('hidden lg:flex fixed inset-y-0 left-0 flex-col bg-white/90 backdrop-blur border-r border-ruong-100 z-30 transition-[width] duration-200', mini ? 'w-20' : 'w-64')}>
+        <div className={cx('flex items-center', mini && 'justify-center pt-4 pb-3')}><Brand mini={mini} /></div>
+        {/* Nút thu gọn / mở rộng: tròn nhỏ gắn ở mép phải thanh bên */}
+        <button onClick={toggleMini} title={mini ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'} aria-label={mini ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'}
+          className={cx('absolute -right-4 w-8 h-8', mini ? 'top-[66px]' : 'top-8', ' rounded-full bg-white ring-2 ring-ruong-200 shadow-md hover:bg-ruong-50 text-ruong-700 font-black grid place-items-center transition hover:scale-110')}>{mini ? '»' : '«'}</button>
+        <nav className={cx('flex-1 overflow-auto pb-3 space-y-1', mini ? 'px-2 pt-2' : 'px-3')}>
           {menu.map(m => (
-            <button key={m.id} onClick={() => go(m.id)}
-              className={cx('w-full flex items-center gap-3 rounded-2xl px-3 py-2.5 text-left font-semibold transition',
+            <button key={m.id} onClick={() => go(m.id)} title={mini ? m.label : undefined}
+              className={cx('w-full flex items-center rounded-2xl py-2.5 text-left font-semibold transition', mini ? 'justify-center px-0' : 'gap-3 px-3',
                 m.id === cur.id ? cx('text-white shadow-md bg-gradient-to-r', m.g) : 'hover:bg-ruong-50 text-ink')}>
-              <span key={m.id === cur.id ? 'on' : 'off'} className={cx('text-xl', m.id === cur.id && 'wiggle')}>{m.icon}</span><span className="flex-1">{m.label}</span>
-              <span className={cx('text-[11px] opacity-60')}>{m.n}</span>
+              <span key={m.id === cur.id ? 'on' : 'off'} className={cx('text-xl', m.id === cur.id && 'wiggle')}>{m.icon}</span>
+              {!mini && <><span className="flex-1">{m.label}</span><span className={cx('text-[11px] opacity-60')}>{m.n}</span></>}
             </button>
           ))}
         </nav>
-        <UserBox profile={profile} />
+        <UserBox profile={profile} mini={mini} />
       </aside>
 
-      <div className="lg:pl-64">
+      <div className={cx('transition-[padding] duration-200', mini ? 'lg:pl-20' : 'lg:pl-64')}>
         {/* Thanh trên */}
         <header className={cx('sticky top-0 z-20 text-white bg-gradient-to-r shadow-md grain-pattern', cur.g)} style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-          <div className="max-w-6xl mx-auto flex items-center gap-3 px-4 py-3">
+          <div className={cx('mx-auto flex items-center gap-3 px-4 py-3', mini ? 'max-w-[1440px]' : 'max-w-6xl')}>
             <span className="text-3xl drop-shadow floaty">{cur.icon}</span>
             <div className="flex-1 min-w-0">
               <h1 className="text-xl font-extrabold leading-tight drop-shadow-sm">{cur.label}</h1>
@@ -97,7 +103,7 @@ export default function App() {
           </div>
         </header>
 
-        <main className="max-w-6xl mx-auto px-3 sm:px-4 pt-4 pb-32 lg:pb-10">
+        <main className={cx('mx-auto px-3 sm:px-4 pt-4 pb-32 lg:pb-10', mini ? 'lg:max-w-[1440px] max-w-6xl' : 'max-w-6xl')}>
           <Suspense fallback={<Loading />}><div key={cur.id} className="anim-in"><Page profile={profile} go={go} /></div></Suspense>
         </main>
       </div>
@@ -133,16 +139,22 @@ export default function App() {
   );
 }
 
-function Brand() {
+function Brand({ mini }) {
+  if (mini) return <img src="icons/icon-192.png" alt="Đại lý Bốn Biển" className="w-11 h-11 rounded-2xl shadow heartbeat" />;
   return (
-    <div className="px-5 py-5 flex items-center gap-3">
+    <div className="flex-1 min-w-0 px-5 py-5 flex items-center gap-3">
       <img src="icons/icon-192.png" alt="" className="w-12 h-12 rounded-2xl shadow heartbeat" />
-      <div><div className="font-extrabold text-lg bg-gradient-to-r from-ruong-700 via-lime-600 to-lua-600 bg-clip-text text-transparent">Đại lý Bốn Biển</div>
+      <div className="min-w-0"><div className="font-extrabold text-lg bg-gradient-to-r from-ruong-700 via-lime-600 to-lua-600 bg-clip-text text-transparent">Đại lý Bốn Biển</div>
         <div className="text-xs text-slate-500">Quản lý cửa hàng gạo</div></div>
     </div>
   );
 }
-function UserBox({ profile }) {
+function UserBox({ profile, mini }) {
+  if (mini) return (
+    <div className="m-2 rounded-2xl bg-gradient-to-r from-lua-100 to-ruong-100 p-2 flex flex-col items-center gap-1" title={`${profile.full_name} · ${ROLE[profile.role]}`}>
+      <div className="w-9 h-9 rounded-full bg-white grid place-items-center text-lg">👤</div>
+      <button onClick={() => supabase.auth.signOut()} className="text-xs font-bold text-rose-600">Thoát</button>
+    </div>);
   return (
     <div className="m-3 rounded-2xl bg-gradient-to-r from-lua-100 to-ruong-100 p-3 flex items-center gap-3">
       <div className="w-10 h-10 rounded-full bg-white grid place-items-center text-xl">👤</div>

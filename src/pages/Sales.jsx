@@ -132,7 +132,7 @@ export default function Sales({ profile }) {
           <span>🧺 Giỏ hàng ({lines.length})</span><span>{money(total)} ›</span>
         </button>)}
       {/* Giỏ hàng & thanh toán */}
-      <div id="cart" className="space-y-4 lg:sticky lg:top-24 scroll-mt-24">
+      <div id="cart" className="space-y-4 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:overscroll-contain lg:pb-2 lg:pr-1 scroll-mt-24 cart-scroll">
         <Card title={`Giỏ hàng (${lines.length})`} icon="🧺" accent="from-lua-500 to-orange-400"
           right={tier === 'wholesale' && <Badge color="bg-white/30 text-white">Giá sỉ</Badge>}>
           <Field label="Khách hàng">
