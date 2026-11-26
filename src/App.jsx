@@ -56,6 +56,15 @@ export default function App() {
       .then(([{ data }, { data: st }]) => setProfile(data ? { ...data, stock: st?.track_stock !== false } : { role: null }));
   }, [session]);
   useEffect(() => { const h = () => setPage(location.hash.slice(1) || 'dashboard'); addEventListener('hashchange', h); return () => removeEventListener('hashchange', h); }, []);
+  // Phím tắt Ctrl+B / Cmd+B: thu gọn/mở rộng thanh bên (bỏ qua khi đang gõ chữ)
+  useEffect(() => {
+    const k = e => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.key.toLowerCase() !== 'b' || e.repeat) return;
+      const t = e.target; if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+      e.preventDefault(); toggleMini();
+    };
+    addEventListener('keydown', k); return () => removeEventListener('keydown', k);
+  }, []);
   const go = id => { location.hash = id; setMore(false); scrollTo(0, 0); };
 
   if (session === undefined || (session && !profile)) return <Splash />;
@@ -75,11 +84,13 @@ export default function App() {
       <aside className={cx('hidden lg:flex fixed inset-y-0 left-0 flex-col bg-white/90 backdrop-blur border-r border-ruong-100 z-30 transition-[width] duration-200', mini ? 'w-20' : 'w-64')}>
         <div className={cx('flex items-center', mini && 'justify-center pt-4 pb-3')}><Brand mini={mini} /></div>
         {/* Nút thu gọn / mở rộng: tròn nhỏ gắn ở mép phải thanh bên */}
-        <button onClick={toggleMini} title={mini ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'} aria-label={mini ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'}
-          className={cx('absolute -right-4 w-8 h-8', mini ? 'top-[66px]' : 'top-8', ' rounded-full bg-white ring-2 ring-ruong-200 shadow-md hover:bg-ruong-50 text-ruong-700 font-black grid place-items-center transition hover:scale-110')}>{mini ? '»' : '«'}</button>
-        <nav className={cx('flex-1 overflow-auto pb-3 space-y-1', mini ? 'px-2 pt-2' : 'px-3')}>
+        <button onClick={toggleMini} title={(mini ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên') + ' (Ctrl+B)'} aria-label={mini ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'}
+          aria-expanded={!mini} aria-controls="side-nav" aria-keyshortcuts="Control+B Meta+B"
+          className={cx('absolute -right-4 w-8 h-8', mini ? 'top-[66px]' : 'top-8', ' rounded-full bg-white ring-2 ring-ruong-300 shadow-md hover:bg-ruong-50 text-ruong-700 font-black grid place-items-center transition hover:scale-110 focus:outline-none focus-visible:ring-4 focus-visible:ring-ruong-500 focus-visible:ring-offset-2')}>{mini ? '»' : '«'}</button>
+        {/* Danh sách menu: cuộn dọc khi màn thấp, không bao giờ cuộn ngang */}
+        <nav id="side-nav" aria-label="Menu chính" className={cx('thin-scroll flex-1 overflow-y-auto overflow-x-hidden pb-3 space-y-1', mini ? 'px-2 pt-2' : 'px-3')}>
           {menu.map(m => (
-            <button key={m.id} onClick={() => go(m.id)} title={mini ? m.label : undefined}
+            <button key={m.id} onClick={() => go(m.id)} title={mini ? m.label : undefined} aria-label={mini ? m.label : undefined} aria-current={m.id === cur.id ? 'page' : undefined}
               className={cx('w-full flex items-center rounded-2xl py-2.5 text-left font-semibold transition', mini ? 'justify-center px-0' : 'gap-3 px-3',
                 m.id === cur.id ? cx('text-white shadow-md bg-gradient-to-r', m.g) : 'hover:bg-ruong-50 text-ink')}>
               <span key={m.id === cur.id ? 'on' : 'off'} className={cx('text-xl', m.id === cur.id && 'wiggle')}>{m.icon}</span>
