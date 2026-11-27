@@ -32,8 +32,10 @@ export default function Sales({ profile }) {
     const p = prods.data?.find(x => x.id === l.product_id); const u = p?.units.find(x => x.unit_code === l.unit_code);
     const list = u ? priceOf(u, tier) : 0;
     const price = l.price == null || l.price === '' ? list : Number(l.price);
-    const qty = Number(l.qty) || 0, disc = Number(l.disc) || 0;
-    return { ...l, p, u, list, priceN: price, qtyN: qty, discN: disc, total: Math.round(qty * price) - disc, base: qty * (u?.factor || 0) };
+    // Mua theo số tiền (vd "50 nghìn gạo"): số lượng = số tiền ÷ đơn giá, thành tiền đúng bằng số tiền khách đưa
+    const amt = Number(l.amt) || 0, byAmt = amt > 0 && price > 0;
+    const qty = byAmt ? amt / price : Number(l.qty) || 0, disc = Number(l.disc) || 0;
+    return { ...l, p, u, list, priceN: price, qtyN: qty, byAmt, discN: disc, total: (byAmt ? amt : Math.round(qty * price)) - disc, base: qty * (u?.factor || 0) };
   });
   const subtotal = lines.reduce((s, l) => s + l.total, 0);
   const total = Math.max(0, subtotal - (Number(invDisc) || 0));
@@ -63,6 +65,12 @@ export default function Sales({ profile }) {
     if (exact) { add(exact); setSearch(''); }
   };
   const upd = (key, patch) => setCart(c => c.map(x => x.key === key ? { ...x, ...patch } : x));
+  // Bật "theo số tiền": hàng bán theo bao thì chuyển sang đơn vị kg (không bán lẻ "nửa bao")
+  const setAmt = (l, v) => {
+    const patch = { amt: v };
+    if (v && l.unit_code === 'bao') { const kg = l.p?.units.find(u => u.is_active && u.unit_code === 'kg'); if (kg) Object.assign(patch, { unit_code: 'kg', price: null }); }
+    upd(l.key, patch);
+  };
 
   const save = async () => {
     if (!lines.length) return toast('Chưa có sản phẩm trong giỏ', 'err');
@@ -154,8 +162,20 @@ export default function Sales({ profile }) {
                   <div className="flex-1 font-bold leading-tight">{l.p?.name}<div className="text-xs font-normal text-slate-500">{l.p?.product_code}{profile.stock && suCode(l.p) === 'bao' && l.unit_code !== 'bao' ? ` · xuất ${num(l.base, 3)} bao` : ''}</div></div>
                   <button onClick={() => setCart(c => c.filter(x => x.key !== l.key))} className="text-rose-500 font-bold px-1" aria-label="Xóa dòng">✕</button>
                 </div>
+                <div className="mt-2 rounded-xl bg-white/80 ring-1 ring-lua-200 p-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-lua-700 whitespace-nowrap">💵 Mua theo số tiền</span>
+                    <Input inputMode="numeric" value={l.amt || ''} placeholder="vd 50000" onChange={e => setAmt(l, digits(e.target.value))} className="!py-1 text-right" aria-label="Số tiền khách muốn mua" />
+                    {l.amt && <button onClick={() => upd(l.key, { amt: '', qty: String(Math.round(l.qtyN * 1000) / 1000 || 1) })} className="text-xs text-slate-500 font-bold px-1" aria-label="Bỏ mua theo số tiền">✕</button>}
+                  </div>
+                  <div className="flex gap-1 mt-1.5">{[10000, 20000, 50000, 100000].map(v => (
+                    <button key={v} onClick={() => setAmt(l, String(v))} className={cx('flex-1 rounded-lg py-1 text-xs font-bold', Number(l.amt) === v ? 'bg-lua-500 text-white' : 'bg-lua-50 text-lua-700')}>{v / 1000}k</button>))}</div>
+                  {l.byAmt && <p className="text-sm mt-1.5 text-ruong-800">⚖️ Cân <b className="text-base">{num(l.qtyN, 3)} {l.u?.unit_name?.toLowerCase()}</b>{l.u?.unit_code === 'kg' && <> (≈ <b>{num(l.qtyN * 1000, 0)} g</b>)</>} <span className="text-xs text-slate-500">· giá {money(l.priceN)}/{l.u?.unit_name?.toLowerCase()}</span></p>}
+                  {Number(l.amt) > 0 && !l.byAmt && <p className="text-xs mt-1.5 text-rose-600">Chưa có đơn giá để tính số lượng</p>}
+                </div>
                 <div className="grid grid-cols-3 gap-2 mt-2">
-                  <label className="text-xs">SL<Input inputMode="decimal" value={l.qty} onChange={e => upd(l.key, { qty: e.target.value.replace(',', '.').replace(/[^\d.]/g, '') })} className="!py-1.5" /></label>
+                  <label className="text-xs">SL<Input inputMode="decimal" value={l.byAmt ? num(l.qtyN, 3) : l.qty} readOnly={l.byAmt} title={l.byAmt ? 'Đang tính theo số tiền' : undefined}
+                    onChange={e => upd(l.key, { qty: e.target.value.replace(',', '.').replace(/[^\d.]/g, ''), amt: '' })} className={cx('!py-1.5', l.byAmt && '!bg-lua-50')} /></label>
                   <label className="text-xs">Đơn vị<Select value={l.unit_code} onChange={e => upd(l.key, { unit_code: e.target.value, price: null })} className="!py-1.5">
                     {l.p?.units.filter(u => u.is_active).map(u => <option key={u.unit_code} value={u.unit_code}>{unitLabel(u)}</option>)}</Select></label>
                   <label className="text-xs">Đơn giá (đ)<Input inputMode="numeric" disabled={!canPrice} value={l.price == null ? l.list : l.price} placeholder={String(l.list)}
